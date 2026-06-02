@@ -87,7 +87,7 @@ export function Home() {
                 <Link
                   key={retro.id}
                   to={`/retro/${retro.id}`}
-                  className="hover:bg-cf-bg-hover block py-3 transition-colors"
+                  className="hover:bg-cf-bg-hover block px-3 py-3 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-cf-text truncate font-medium">{retro.title}</span>
