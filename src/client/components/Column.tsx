@@ -15,22 +15,6 @@ interface ColumnProps {
   allCards: CardType[];
 }
 
-const COLUMN_COLORS: Record<ColumnId, string> = {
-  start: "bg-emerald-50 border-emerald-200",
-  stop: "bg-red-50 border-red-200",
-  continue: "bg-blue-50 border-blue-200",
-  notes: "bg-amber-50 border-amber-200",
-  actions: "bg-purple-50 border-purple-200",
-};
-
-const COLUMN_ACCENT: Record<ColumnId, string> = {
-  start: "text-emerald-700",
-  stop: "text-red-700",
-  continue: "text-blue-700",
-  notes: "text-amber-700",
-  actions: "text-purple-700",
-};
-
 export function Column({
   columnId,
   label,
@@ -84,13 +68,13 @@ export function Column({
   return (
     <div
       ref={columnRef}
-      className={`flex w-72 min-w-72 flex-col rounded-xl border ${COLUMN_COLORS[columnId]} transition-all ${
+      className={`border-cf-border bg-cf-bg-hover flex min-h-80 w-full min-w-0 flex-col rounded-xl border transition-all ${
         isDragOver ? "ring-cf-orange ring-opacity-50 ring-2" : ""
       }`}
     >
       {/* Column header */}
       <div className="flex items-center justify-between px-4 py-3">
-        <h2 className={`font-medium tracking-tight ${COLUMN_ACCENT[columnId]}`}>{label}</h2>
+        <h2 className="text-cf-text font-medium tracking-tight">{label}</h2>
         <span className="text-cf-text-muted text-xs">{cards.length}</span>
       </div>
 

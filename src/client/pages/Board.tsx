@@ -102,7 +102,7 @@ export function Board() {
   return (
     <div className="bg-cf-bg-page flex h-screen flex-col">
       {/* Header */}
-      <header className="border-cf-border flex items-center justify-between border-b px-6 py-3">
+      <header className="border-cf-border flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
         <div className="flex items-center gap-4">
           <Link to="/" className="text-cf-orange hover:underline hover:underline-offset-4">
             ← Back
@@ -112,7 +112,7 @@ export function Board() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Online users */}
           <div className="flex -space-x-2">
             {state.users.map((user) => (
@@ -151,7 +151,10 @@ export function Board() {
       </header>
 
       {/* Board */}
-      <div ref={boardRef} className="relative flex flex-1 gap-4 overflow-x-auto p-4">
+      <div
+        ref={boardRef}
+        className="relative grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]"
+      >
         {COLUMNS.map((columnId) => (
           <Column
             key={columnId}
