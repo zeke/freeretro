@@ -36,6 +36,15 @@ export function About() {
             Every new retro gets a unique, unguessable URL that you can share with anyone. Free
             Retro is fun, multiplayer, hosted on Cloudflare, open source on GitHub, and free to use.
           </p>
+
+          <div className="pt-4">
+            <Link
+              to="/"
+              className="border-cf-orange bg-cf-orange inline-flex rounded-full border px-6 py-3 font-medium text-white transition-all hover:opacity-95 active:translate-y-[1px] active:scale-[0.98]"
+            >
+              Create a retro
+            </Link>
+          </div>
         </article>
       </main>
       <Footer />

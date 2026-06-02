@@ -238,23 +238,29 @@ export function Board() {
       {/* Board */}
       <div
         ref={boardRef}
-        className="relative grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]"
+        className="relative grid flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto p-4 md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]"
       >
-        {state.columns.map((column) => (
-          <Column
+        {state.columns.map((column, index) => (
+          <div
             key={column.id}
-            columnId={column.id}
-            label={column.label}
-            cards={state.getCardsForColumn(column.id)}
-            getGroupedCards={state.getGroupedCards}
-            getReactionsForCard={state.getReactionsForCard}
-            getUpvotesForCard={state.getUpvotesForCard}
-            send={send}
-            userName={name}
-            userId={userId}
-            blurred={state.blurred}
-            allCards={state.cards}
-          />
+            className={`min-w-0 ${index > 0 ? "border-cf-border md:border-l md:pl-4" : ""} ${
+              index < state.columns.length - 1 ? "pb-6 md:pr-4" : ""
+            }`}
+          >
+            <Column
+              columnId={column.id}
+              label={column.label}
+              cards={state.getCardsForColumn(column.id)}
+              getGroupedCards={state.getGroupedCards}
+              getReactionsForCard={state.getReactionsForCard}
+              getUpvotesForCard={state.getUpvotesForCard}
+              send={send}
+              userName={name}
+              userId={userId}
+              blurred={state.blurred}
+              allCards={state.cards}
+            />
+          </div>
         ))}
         <CursorOverlay cursors={cursors} boardRef={boardRef} />
       </div>

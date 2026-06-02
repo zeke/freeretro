@@ -8,10 +8,22 @@ function GitHubIcon() {
   );
 }
 
+function CloudflareIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 48 28" className="h-4 w-7 fill-current">
+      <path d="M36.2 11.2c-.7-5.4-5.3-9.6-10.9-9.6-4.7 0-8.8 3-10.4 7.3-.8-.3-1.7-.5-2.6-.5-4.1 0-7.4 3.3-7.4 7.4 0 .5.1 1 .2 1.5C2.2 18.1 0 20.8 0 24h36.1c3.5 0 6.4-2.9 6.4-6.4s-2.8-6.3-6.3-6.4Z" />
+      <path d="M41.5 24H48c0-3.2-2.2-5.9-5.1-6.7v.3c0 2.7-1.3 5-3.4 6.4h2Z" />
+    </svg>
+  );
+}
+
 export function Footer() {
   return (
     <footer className="text-cf-text-muted flex flex-wrap items-center justify-center gap-3 px-6 py-6 text-sm">
-      <span>Made with love by Cloudflare</span>
+      <span className="inline-flex items-center gap-1.5">
+        <CloudflareIcon />
+        Sponsored by Cloudflare
+      </span>
       <span aria-hidden="true">/</span>
       <a
         href="https://github.com/zeke/freeretro"

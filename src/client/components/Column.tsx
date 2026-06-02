@@ -130,7 +130,7 @@ export function Column({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-2 overflow-y-auto pb-3">
+      <div className="flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-3">
         {cards.map((card, index) => (
           <RetroCard
             key={card.id}

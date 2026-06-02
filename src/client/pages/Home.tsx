@@ -72,12 +72,8 @@ export function Home() {
             {creating ? "Creating..." : "Create retro"}
           </button>
         </form>
-        <p className="text-cf-text-muted mt-4 text-center text-sm">
-          Each retro gets a unique unguessable URL. Anyone with the link can join.
-        </p>
-
         {localRetros.length > 0 && (
-          <section className="mx-auto mt-12 w-full max-w-xl">
+          <section className="mx-auto mt-16 w-full max-w-xl">
             <div className="mb-4 text-center">
               <h2 className="text-cf-text text-lg font-medium tracking-tight">
                 Your recent retros
