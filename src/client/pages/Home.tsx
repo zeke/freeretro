@@ -1,12 +1,19 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import type { RetroSummary } from "../../types";
 import { Footer } from "../components/Footer";
+import { getLocalRetros, saveLocalRetro } from "../localRetros";
+import type { LocalRetro } from "../localRetros";
 
 export function Home() {
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [localRetros, setLocalRetros] = useState<LocalRetro[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setLocalRetros(getLocalRetros());
+  }, []);
 
   const createRetro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,9 +27,18 @@ export function Home() {
     });
 
     const retro = (await res.json()) as RetroSummary;
+    setLocalRetros(saveLocalRetro(retro));
     setTitle("");
     setCreating(false);
     navigate(`/retro/${retro.id}`);
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   return (
@@ -59,6 +75,33 @@ export function Home() {
         <p className="text-cf-text-muted mt-4 text-center text-sm">
           Each retro gets a unique unguessable URL. Anyone with the link can join.
         </p>
+
+        {localRetros.length > 0 && (
+          <section className="mx-auto mt-12 w-full max-w-xl">
+            <div className="mb-4 text-center">
+              <h2 className="text-cf-text text-lg font-medium tracking-tight">Your retros</h2>
+              <p className="text-cf-text-muted mt-1 text-sm">
+                This list is stored in your browser's localStorage and is only visible to you.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {localRetros.map((retro) => (
+                <Link
+                  key={retro.id}
+                  to={`/retro/${retro.id}`}
+                  className="border-cf-border bg-cf-bg-card hover:border-cf-orange block rounded-lg border p-3 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-cf-text truncate font-medium">{retro.title}</span>
+                    <span className="text-cf-text-muted shrink-0 text-xs">
+                      {formatDate(retro.lastOpenedAt)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
       <Footer />
     </div>

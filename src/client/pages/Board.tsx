@@ -8,6 +8,7 @@ import { CursorOverlay } from "../components/CursorOverlay";
 import { NamePrompt } from "../components/NamePrompt";
 import { Footer } from "../components/Footer";
 import type { RetroSummary } from "../../types";
+import { removeLocalRetro, saveLocalRetro } from "../localRetros";
 
 export function Board() {
   const { retroId } = useParams<{ retroId: string }>();
@@ -33,9 +34,14 @@ export function Board() {
       .then(async (res) => {
         if (res.status === 404) {
           setNotFound(true);
+          if (retroId) {
+            removeLocalRetro(retroId);
+          }
           return;
         }
-        setRetro((await res.json()) as RetroSummary);
+        const nextRetro = (await res.json()) as RetroSummary;
+        setRetro(nextRetro);
+        saveLocalRetro(nextRetro);
       })
       .catch(() => setNotFound(true));
   }, [retroId]);
@@ -70,6 +76,9 @@ export function Board() {
     if (!confirmed) return;
 
     await fetch(`/api/retros/${retroId}`, { method: "DELETE" });
+    if (retroId) {
+      removeLocalRetro(retroId);
+    }
     navigate("/");
   };
 
