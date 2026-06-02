@@ -33,6 +33,11 @@ export interface Reaction {
   userName: string;
 }
 
+export interface Upvote {
+  cardId: string;
+  userId: string;
+}
+
 export interface RetroUser {
   id: string;
   name: string;
@@ -58,6 +63,8 @@ export type ClientMessage =
   | { type: "card:ungroup"; cardId: string }
   | { type: "column:update"; columnId: ColumnId; label: string }
   | { type: "blur:set"; blurred: boolean }
+  | { type: "sort:set"; sortByUpvotes: boolean }
+  | { type: "upvote:toggle"; cardId: string }
   | { type: "reaction:toggle"; cardId: string; emoji: string };
 
 // WebSocket messages: Server → Client
@@ -67,8 +74,10 @@ export type ServerMessage =
       cards: Card[];
       columns: RetroColumn[];
       reactions: Reaction[];
+      upvotes: Upvote[];
       users: RetroUser[];
       blurred: boolean;
+      sortByUpvotes: boolean;
     }
   | { type: "user:joined"; user: RetroUser }
   | { type: "user:left"; userId: string }
@@ -81,6 +90,8 @@ export type ServerMessage =
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
   | { type: "column:updated"; column: RetroColumn }
   | { type: "blur:updated"; blurred: boolean }
+  | { type: "sort:updated"; sortByUpvotes: boolean }
+  | { type: "upvote:toggled"; cardId: string; upvotes: Upvote[] }
   | { type: "retro:deleted" }
   | {
       type: "reaction:toggled";

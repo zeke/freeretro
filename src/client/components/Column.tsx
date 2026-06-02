@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import type { Card as CardType, Reaction, ColumnId, ClientMessage } from "../../types";
+import type { Card as CardType, Reaction, Upvote, ColumnId, ClientMessage } from "../../types";
 import { RetroCard } from "./Card";
 import { CardForm } from "./CardForm";
 
@@ -10,6 +10,7 @@ interface ColumnProps {
   cards: CardType[];
   getGroupedCards: (groupId: string) => CardType[];
   getReactionsForCard: (cardId: string) => Reaction[];
+  getUpvotesForCard: (cardId: string) => Upvote[];
   send: (msg: ClientMessage) => void;
   userName: string;
   userId: string;
@@ -23,6 +24,7 @@ export function Column({
   cards,
   getGroupedCards,
   getReactionsForCard,
+  getUpvotesForCard,
   send,
   userName,
   userId,
@@ -89,12 +91,12 @@ export function Column({
   return (
     <div
       ref={columnRef}
-      className={`border-cf-border bg-cf-bg-hover flex min-h-80 w-full min-w-0 flex-col rounded-xl border transition-all ${
+      className={`flex min-h-80 w-full min-w-0 flex-col transition-all ${
         isDragOver ? "ring-cf-orange ring-opacity-50 ring-2" : ""
       }`}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-1 py-3">
         {isEditingLabel ? (
           <input
             value={draftLabel}
@@ -128,7 +130,7 @@ export function Column({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-2 overflow-y-auto px-3 pb-3">
+      <div className="flex-1 space-y-2 overflow-y-auto pb-3">
         {cards.map((card, index) => (
           <RetroCard
             key={card.id}
@@ -136,6 +138,7 @@ export function Column({
             index={index}
             groupedCards={getGroupedCards(card.id)}
             reactions={getReactionsForCard(card.id)}
+            upvotes={getUpvotesForCard(card.id)}
             send={send}
             userName={userName}
             userId={userId}

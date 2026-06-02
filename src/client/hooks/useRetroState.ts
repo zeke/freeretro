@@ -1,13 +1,23 @@
 import { useEffect, useCallback, useReducer } from "react";
 import { DEFAULT_COLUMNS } from "../../types";
-import type { Card, Reaction, RetroUser, ServerMessage, ColumnId, RetroColumn } from "../../types";
+import type {
+  Card,
+  Reaction,
+  RetroUser,
+  ServerMessage,
+  ColumnId,
+  RetroColumn,
+  Upvote,
+} from "../../types";
 
 interface RetroState {
   cards: Card[];
   columns: RetroColumn[];
   reactions: Reaction[];
+  upvotes: Upvote[];
   users: RetroUser[];
   blurred: boolean;
+  sortByUpvotes: boolean;
   loaded: boolean;
 }
 
@@ -17,8 +27,10 @@ type RetroAction =
       cards: Card[];
       columns: RetroColumn[];
       reactions: Reaction[];
+      upvotes: Upvote[];
       users: RetroUser[];
       blurred: boolean;
+      sortByUpvotes: boolean;
     }
   | { type: "user:joined"; user: RetroUser }
   | { type: "user:left"; userId: string }
@@ -30,6 +42,8 @@ type RetroAction =
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
   | { type: "column:updated"; column: RetroColumn }
   | { type: "blur:updated"; blurred: boolean }
+  | { type: "sort:updated"; sortByUpvotes: boolean }
+  | { type: "upvote:toggled"; cardId: string; upvotes: Upvote[] }
   | { type: "reaction:toggled"; cardId: string; reactions: Reaction[] };
 
 function reducer(state: RetroState, action: RetroAction): RetroState {
@@ -39,8 +53,10 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
         cards: action.cards,
         columns: action.columns,
         reactions: action.reactions,
+        upvotes: action.upvotes,
         users: action.users,
         blurred: action.blurred,
+        sortByUpvotes: action.sortByUpvotes,
         loaded: true,
       };
 
@@ -114,6 +130,14 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
     case "blur:updated":
       return { ...state, blurred: action.blurred };
 
+    case "sort:updated":
+      return { ...state, sortByUpvotes: action.sortByUpvotes };
+
+    case "upvote:toggled": {
+      const otherUpvotes = state.upvotes.filter((upvote) => upvote.cardId !== action.cardId);
+      return { ...state, upvotes: [...otherUpvotes, ...action.upvotes] };
+    }
+
     default:
       return state;
   }
@@ -123,8 +147,10 @@ const initialState: RetroState = {
   cards: [],
   columns: DEFAULT_COLUMNS.map((column) => ({ ...column })),
   reactions: [],
+  upvotes: [],
   users: [],
   blurred: true,
+  sortByUpvotes: false,
   loaded: false,
 };
 
@@ -140,8 +166,10 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
             cards: msg.cards,
             columns: msg.columns,
             reactions: msg.reactions,
+            upvotes: msg.upvotes,
             users: msg.users,
             blurred: msg.blurred,
+            sortByUpvotes: msg.sortByUpvotes,
           });
           break;
         case "user:joined":
@@ -179,6 +207,12 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
         case "blur:updated":
           dispatch({ type: "blur:updated", blurred: msg.blurred });
           break;
+        case "sort:updated":
+          dispatch({ type: "sort:updated", sortByUpvotes: msg.sortByUpvotes });
+          break;
+        case "upvote:toggled":
+          dispatch({ type: "upvote:toggled", cardId: msg.cardId, upvotes: msg.upvotes });
+          break;
         case "reaction:toggled":
           dispatch({
             type: "reaction:toggled",
@@ -194,9 +228,16 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
     (columnId: ColumnId) => {
       return state.cards
         .filter((c) => c.columnId === columnId && c.groupId === null)
-        .sort((a, b) => a.position - b.position);
+        .sort((a, b) => {
+          if (state.sortByUpvotes) {
+            const aUpvotes = state.upvotes.filter((upvote) => upvote.cardId === a.id).length;
+            const bUpvotes = state.upvotes.filter((upvote) => upvote.cardId === b.id).length;
+            if (aUpvotes !== bUpvotes) return bUpvotes - aUpvotes;
+          }
+          return a.position - b.position;
+        });
     },
-    [state.cards],
+    [state.cards, state.sortByUpvotes, state.upvotes],
   );
 
   const getGroupedCards = useCallback(
@@ -215,10 +256,18 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
     [state.reactions],
   );
 
+  const getUpvotesForCard = useCallback(
+    (cardId: string) => {
+      return state.upvotes.filter((upvote) => upvote.cardId === cardId);
+    },
+    [state.upvotes],
+  );
+
   return {
     ...state,
     getCardsForColumn,
     getGroupedCards,
     getReactionsForCard,
+    getUpvotesForCard,
   };
 }

@@ -27,7 +27,7 @@ export function CardGroup({
         return (
           <div
             key={card.id}
-            className="group border-cf-border bg-cf-bg-card hover:border-cf-orange relative border p-2 transition-all hover:border-dashed"
+            className="group border-cf-border bg-cf-bg-hover hover:border-cf-orange relative border p-2 transition-all hover:border-dashed"
           >
             <p
               className={`text-cf-text text-xs whitespace-pre-wrap transition-[filter] ${

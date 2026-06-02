@@ -45,7 +45,7 @@ export function Home() {
     <div className="flex min-h-screen flex-col">
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-6 py-12">
         <header className="mb-12 text-center">
-          <h1 className="text-cf-text mb-5 text-7xl leading-none font-medium tracking-tight sm:text-8xl md:text-9xl">
+          <h1 className="text-cf-text mb-5 text-7xl leading-none font-black tracking-tighter sm:text-8xl md:text-9xl">
             Free Retro
           </h1>
           <p className="text-cf-text-muted text-xl">
@@ -79,17 +79,19 @@ export function Home() {
         {localRetros.length > 0 && (
           <section className="mx-auto mt-12 w-full max-w-xl">
             <div className="mb-4 text-center">
-              <h2 className="text-cf-text text-lg font-medium tracking-tight">Your retros</h2>
+              <h2 className="text-cf-text text-lg font-medium tracking-tight">
+                Your recent retros
+              </h2>
               <p className="text-cf-text-muted mt-1 text-sm">
                 This list is stored in your browser's localStorage and is only visible to you.
               </p>
             </div>
-            <div className="space-y-2">
+            <div className="border-cf-border divide-cf-border divide-y border-y">
               {localRetros.map((retro) => (
                 <Link
                   key={retro.id}
                   to={`/retro/${retro.id}`}
-                  className="border-cf-border bg-cf-bg-card hover:border-cf-orange block rounded-lg border p-3 transition-colors"
+                  className="hover:bg-cf-bg-hover block py-3 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-cf-text truncate font-medium">{retro.title}</span>

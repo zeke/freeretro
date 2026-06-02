@@ -3,7 +3,7 @@ import {
   draggable,
   dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import type { Card as CardType, Reaction, ClientMessage } from "../../types";
+import type { Card as CardType, Reaction, Upvote, ClientMessage } from "../../types";
 import { EmojiReaction } from "./EmojiReaction";
 import { CardGroup } from "./CardGroup";
 
@@ -12,6 +12,7 @@ interface RetroCardProps {
   index: number;
   groupedCards: CardType[];
   reactions: Reaction[];
+  upvotes: Upvote[];
   send: (msg: ClientMessage) => void;
   userName: string;
   userId: string;
@@ -24,6 +25,7 @@ export function RetroCard({
   index,
   groupedCards,
   reactions,
+  upvotes,
   send,
   userName,
   userId,
@@ -38,6 +40,7 @@ export function RetroCard({
   const [editContent, setEditContent] = useState(card.content);
   const isOwnCard = card.authorId === userId || (!card.authorId && card.author === userName);
   const shouldBlur = blurred && !isOwnCard;
+  const userUpvoted = upvotes.some((upvote) => upvote.userId === userId);
 
   useEffect(() => {
     const el = cardRef.current;
@@ -142,7 +145,7 @@ export function RetroCard({
     <div>
       <div
         ref={cardRef}
-        className={`group bg-cf-bg-card relative border transition-all ${
+        className={`group bg-cf-bg-hover relative border transition-all ${
           isDragging ? "opacity-40" : ""
         } ${
           isDropTarget
@@ -211,10 +214,21 @@ export function RetroCard({
           {/* Author and actions */}
           <div className="mt-2 flex items-center justify-between">
             <span className="text-cf-text-muted text-xs">{card.author}</span>
-            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => send({ type: "upvote:toggle", cardId: card.id })}
+                className={`rounded-full border px-2 py-0.5 text-xs transition-all ${
+                  userUpvoted
+                    ? "border-cf-orange text-cf-orange bg-orange-50"
+                    : "border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange"
+                }`}
+                title="Upvote"
+              >
+                ↑ {upvotes.length}
+              </button>
               <button
                 onClick={handleDelete}
-                className="text-cf-text-muted rounded px-1.5 py-0.5 text-xs hover:bg-red-50 hover:text-red-500"
+                className="text-cf-text-muted rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
               >
                 ✕
               </button>

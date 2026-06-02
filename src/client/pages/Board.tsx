@@ -77,6 +77,10 @@ export function Board() {
     send({ type: "blur:set", blurred: !state.blurred });
   };
 
+  const toggleSort = () => {
+    send({ type: "sort:set", sortByUpvotes: !state.sortByUpvotes });
+  };
+
   const saveTitle = async () => {
     const trimmed = draftTitle.trim().slice(0, 80);
     if (!trimmed || !retro || trimmed === retro.title) {
@@ -217,6 +221,12 @@ export function Board() {
             {state.blurred ? "Show cards" : "Blur cards"}
           </button>
           <button
+            onClick={toggleSort}
+            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
+          >
+            {state.sortByUpvotes ? "Manual order" : "Sort by votes"}
+          </button>
+          <button
             onClick={deleteRetro}
             className="border-cf-border text-cf-text-muted rounded-full border px-4 py-1.5 text-sm transition-all hover:border-red-400 hover:text-red-500"
           >
@@ -238,6 +248,7 @@ export function Board() {
             cards={state.getCardsForColumn(column.id)}
             getGroupedCards={state.getGroupedCards}
             getReactionsForCard={state.getReactionsForCard}
+            getUpvotesForCard={state.getUpvotesForCard}
             send={send}
             userName={name}
             userId={userId}

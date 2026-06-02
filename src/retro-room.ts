@@ -8,6 +8,7 @@ import type {
   ServerMessage,
   ColumnId,
   RetroColumn,
+  Upvote,
 } from "./types";
 import { USER_COLORS, COLUMNS, DEFAULT_COLUMNS } from "./types";
 
@@ -44,6 +45,14 @@ export class RetroRoom extends DurableObject<Env> {
           emoji TEXT NOT NULL,
           user_name TEXT NOT NULL,
           PRIMARY KEY (card_id, emoji, user_name)
+        )
+      `);
+
+      this.ctx.storage.sql.exec(`
+        CREATE TABLE IF NOT EXISTS upvotes (
+          card_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          PRIMARY KEY (card_id, user_id)
         )
       `);
 
@@ -88,6 +97,11 @@ export class RetroRoom extends DurableObject<Env> {
         "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
         "blurred",
         "true",
+      );
+      this.ctx.storage.sql.exec(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+        "sortByUpvotes",
+        "false",
       );
 
       this.ctx.storage.sql.exec(
@@ -231,6 +245,14 @@ export class RetroRoom extends DurableObject<Env> {
         this.handleBlurSet(msg.blurred);
         break;
 
+      case "sort:set":
+        this.handleSortSet(msg.sortByUpvotes);
+        break;
+
+      case "upvote:toggle":
+        this.handleUpvoteToggle(msg.cardId, session.id);
+        break;
+
       case "reaction:toggle":
         this.handleReactionToggle(msg.cardId, msg.emoji, session.name);
         break;
@@ -309,6 +331,7 @@ export class RetroRoom extends DurableObject<Env> {
     // Also ungroup any cards grouped under this one
     this.ctx.storage.sql.exec("UPDATE cards SET group_id = NULL WHERE group_id = ?", cardId);
     this.ctx.storage.sql.exec("DELETE FROM reactions WHERE card_id = ?", cardId);
+    this.ctx.storage.sql.exec("DELETE FROM upvotes WHERE card_id = ?", cardId);
     this.ctx.storage.sql.exec("DELETE FROM cards WHERE id = ?", cardId);
     this.broadcast({ type: "card:deleted", cardId });
   }
@@ -415,6 +438,42 @@ export class RetroRoom extends DurableObject<Env> {
     this.broadcast({ type: "blur:updated", blurred });
   }
 
+  private handleSortSet(sortByUpvotes: boolean): void {
+    this.ctx.storage.sql.exec(
+      "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+      "sortByUpvotes",
+      String(sortByUpvotes),
+    );
+    this.broadcast({ type: "sort:updated", sortByUpvotes });
+  }
+
+  private handleUpvoteToggle(cardId: string, userId: string): void {
+    const existing = [
+      ...this.ctx.storage.sql.exec<{ card_id: string }>(
+        "SELECT card_id FROM upvotes WHERE card_id = ? AND user_id = ?",
+        cardId,
+        userId,
+      ),
+    ];
+
+    if (existing.length > 0) {
+      this.ctx.storage.sql.exec(
+        "DELETE FROM upvotes WHERE card_id = ? AND user_id = ?",
+        cardId,
+        userId,
+      );
+    } else {
+      this.ctx.storage.sql.exec(
+        "INSERT INTO upvotes (card_id, user_id) VALUES (?, ?)",
+        cardId,
+        userId,
+      );
+    }
+
+    const upvotes = this.getUpvotesForCard(cardId);
+    this.broadcast({ type: "upvote:toggled", cardId, upvotes });
+  }
+
   // --- Helpers ---
 
   private getColumn(id: ColumnId): RetroColumn | null {
@@ -507,6 +566,29 @@ export class RetroRoom extends DurableObject<Env> {
     }));
   }
 
+  private getAllUpvotes(): Upvote[] {
+    const rows = this.ctx.storage.sql.exec<{ card_id: string; user_id: string }>(
+      "SELECT * FROM upvotes",
+    );
+
+    return [...rows].map((row) => ({
+      cardId: row.card_id,
+      userId: row.user_id,
+    }));
+  }
+
+  private getUpvotesForCard(cardId: string): Upvote[] {
+    const rows = this.ctx.storage.sql.exec<{ card_id: string; user_id: string }>(
+      "SELECT * FROM upvotes WHERE card_id = ?",
+      cardId,
+    );
+
+    return [...rows].map((row) => ({
+      cardId: row.card_id,
+      userId: row.user_id,
+    }));
+  }
+
   private getReactionsForCard(cardId: string): Reaction[] {
     const rows = this.ctx.storage.sql.exec<{
       card_id: string;
@@ -542,16 +624,28 @@ export class RetroRoom extends DurableObject<Env> {
     return row?.value !== "false";
   }
 
+  private getSortByUpvotes(): boolean {
+    const row = [
+      ...this.ctx.storage.sql.exec<{ value: string }>(
+        "SELECT value FROM settings WHERE key = ?",
+        "sortByUpvotes",
+      ),
+    ][0];
+    return row?.value === "true";
+  }
+
   private getFullState(): ServerMessage {
     const columns = this.getColumns();
     const cards = this.getAllCards();
     const reactions = this.getAllReactions();
+    const upvotes = this.getAllUpvotes();
     const blurred = this.getBlurred();
+    const sortByUpvotes = this.getSortByUpvotes();
     const users: RetroUser[] = [];
     for (const session of this.sessions.values()) {
       users.push({ id: session.id, name: session.name, color: session.color });
     }
-    return { type: "state", cards, columns, reactions, users, blurred };
+    return { type: "state", cards, columns, reactions, upvotes, users, blurred, sortByUpvotes };
   }
 
   private broadcast(message: ServerMessage, exclude?: WebSocket): void {
