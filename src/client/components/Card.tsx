@@ -165,6 +165,8 @@ export function RetroCard({
     <div>
       <div
         ref={cardRef}
+        data-agent="card"
+        data-card-id={card.id}
         className={`group bg-cf-bg-hover relative border transition-all ${
           isDragging ? "opacity-40" : ""
         } ${

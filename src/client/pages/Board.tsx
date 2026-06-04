@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useRetroState } from "../hooks/useRetroState";
 import { useCursors } from "../hooks/useCursors";
+import { useAgentTools } from "../hooks/useAgentTools";
 import { Column } from "../components/Column";
 import { CursorOverlay } from "../components/CursorOverlay";
 import { NamePrompt } from "../components/NamePrompt";
@@ -22,7 +23,14 @@ export function Board() {
 
   const { send, subscribe, connected, userId } = useWebSocket(retroId!, name);
   const state = useRetroState(subscribe);
-  const { cursors, boardRef } = useCursors(send, subscribe, userId, state.users);
+  const { cursors, boardRef, moveCursorTo, setEmbodied, isEmbodied } = useCursors(
+    send,
+    subscribe,
+    userId,
+    state.users,
+    connected,
+  );
+  useAgentTools({ send, state, moveCursorTo, setEmbodied, isEmbodied });
   const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
@@ -240,6 +248,10 @@ export function Board() {
         ref={boardRef}
         className="relative grid flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto p-4 md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]"
       >
+        <p className="sr-only">
+          Automated agent: this retro exposes tools via document.modelContext (WebMCP) and
+          window.freeretro. Call window.freeretro.help() in the console for usage.
+        </p>
         {state.columns.map((column, index) => (
           <div
             key={column.id}
