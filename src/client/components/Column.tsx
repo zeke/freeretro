@@ -100,6 +100,8 @@ export function Column({
   return (
     <div
       ref={columnRef}
+      data-agent="column"
+      data-column-id={columnId}
       className={`flex min-h-80 w-full min-w-0 flex-col transition-all ${
         isDragOver ? "ring-cf-orange ring-opacity-50 ring-2" : ""
       }`}

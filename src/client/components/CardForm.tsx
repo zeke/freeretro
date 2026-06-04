@@ -20,6 +20,7 @@ export function CardForm({ onSubmit }: CardFormProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
+        data-agent="add-card"
         className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange w-full rounded-lg border border-dashed p-2 text-sm transition-all"
       >
         + Add card
