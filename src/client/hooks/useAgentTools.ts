@@ -98,8 +98,13 @@ export function useAgentTools(options: UseAgentToolsOptions) {
         await sleep(DWELL.click);
         clickRef.current(center.x, center.y);
       },
-      async drag(from, to) {
-        if (modeRef.current !== "human") return;
+      async drag(from, to, onDrop) {
+        if (modeRef.current !== "human") {
+          onDrop?.();
+          return;
+        }
+        const cardId =
+          from.type === "card" || from.type === "card-control" ? from.cardId : undefined;
         const fromEl = locateElement(from);
         if (fromEl) {
           const center = elementCenter(fromEl);
@@ -107,6 +112,8 @@ export function useAgentTools(options: UseAgentToolsOptions) {
           await sleep(DWELL.grab);
           clickRef.current(center.x, center.y);
         }
+        // Tell everyone the card is now travelling with this cursor.
+        if (cardId) sendRef.current({ type: "drag:start", cardId });
         const toEl = locateElement(to);
         if (toEl) {
           const center = elementCenter(toEl);
@@ -114,6 +121,9 @@ export function useAgentTools(options: UseAgentToolsOptions) {
           await sleep(DWELL.drop);
           clickRef.current(center.x, center.y);
         }
+        // Commit the move while the ghost is at the destination, then release.
+        onDrop?.();
+        if (cardId) sendRef.current({ type: "drag:end" });
       },
       async point(x, y) {
         await moveRef.current(x, y, { animate: modeRef.current === "human" });

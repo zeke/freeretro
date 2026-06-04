@@ -45,6 +45,9 @@ export function useCursors(
 ) {
   const [cursors, setCursors] = useState<Map<string, CursorPosition>>(new Map());
   const [clicks, setClicks] = useState<Map<string, ClickRipple>>(new Map());
+  // userId -> cardId for cards other people are currently dragging.
+  const [drags, setDrags] = useState<Map<string, string>>(new Map());
+  const dragTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const userColorsRef = useRef<Map<string, string>>(new Map());
   const lastSendRef = useRef(0);
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -116,8 +119,49 @@ export function useCursors(
         }, 600);
       }
 
+      if (msg.type === "drag:start" && msg.userId !== userId) {
+        const dragUserId = msg.userId;
+        setDrags((prev) => {
+          const next = new Map(prev);
+          next.set(dragUserId, msg.cardId);
+          return next;
+        });
+        const timers = dragTimersRef.current;
+        clearTimeout(timers.get(dragUserId));
+        timers.set(
+          dragUserId,
+          setTimeout(() => {
+            setDrags((prev) => {
+              if (!prev.has(dragUserId)) return prev;
+              const next = new Map(prev);
+              next.delete(dragUserId);
+              return next;
+            });
+          }, 12000),
+        );
+      }
+
+      if (msg.type === "drag:end" && msg.userId !== userId) {
+        clearTimeout(dragTimersRef.current.get(msg.userId));
+        dragTimersRef.current.delete(msg.userId);
+        setDrags((prev) => {
+          if (!prev.has(msg.userId)) return prev;
+          const next = new Map(prev);
+          next.delete(msg.userId);
+          return next;
+        });
+      }
+
       if (msg.type === "user:left") {
         setCursors((prev) => {
+          const next = new Map(prev);
+          next.delete(msg.userId);
+          return next;
+        });
+        clearTimeout(dragTimersRef.current.get(msg.userId));
+        dragTimersRef.current.delete(msg.userId);
+        setDrags((prev) => {
+          if (!prev.has(msg.userId)) return prev;
           const next = new Map(prev);
           next.delete(msg.userId);
           return next;
@@ -346,5 +390,14 @@ export function useCursors(
     };
   }, []);
 
-  return { cursors, clicks, boardRef, moveCursorTo, broadcastClick, setEmbodied, isEmbodied };
+  return {
+    cursors,
+    clicks,
+    drags,
+    boardRef,
+    moveCursorTo,
+    broadcastClick,
+    setEmbodied,
+    isEmbodied,
+  };
 }

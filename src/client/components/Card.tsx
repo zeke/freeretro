@@ -27,6 +27,7 @@ interface RetroCardProps {
   userId: string;
   blurred: boolean;
   allCards: CardType[];
+  remoteDragging?: boolean;
 }
 
 export function RetroCard({
@@ -41,6 +42,7 @@ export function RetroCard({
   userId,
   blurred,
   allCards,
+  remoteDragging = false,
 }: RetroCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
@@ -66,10 +68,16 @@ export function RetroCard({
         columnId: card.columnId,
         index,
       }),
-      onDragStart: () => setIsDragging(true),
-      onDrop: () => setIsDragging(false),
+      onDragStart: () => {
+        setIsDragging(true);
+        send({ type: "drag:start", cardId: card.id });
+      },
+      onDrop: () => {
+        setIsDragging(false);
+        send({ type: "drag:end" });
+      },
     });
-  }, [card.id, card.columnId, index]);
+  }, [card.id, card.columnId, index, send]);
 
   useEffect(() => {
     const el = cardRef.current;
@@ -168,7 +176,7 @@ export function RetroCard({
         data-agent="card"
         data-card-id={card.id}
         className={`group bg-cf-bg-hover relative border transition-all ${
-          isDragging ? "opacity-40" : ""
+          isDragging || remoteDragging ? "opacity-40" : ""
         } ${
           isDropTarget
             ? "border-cf-orange ring-cf-orange border-dashed ring-1"

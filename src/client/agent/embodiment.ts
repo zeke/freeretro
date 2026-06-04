@@ -2,17 +2,21 @@ import type { ColumnId } from "../../types";
 
 export type InteractionMode = "human" | "direct";
 
-// Where on the board the agent's cursor should glide before acting.
+// Where on the board the agent's cursor should glide before acting. The
+// *-control variants target a specific control inside a card or column so the
+// cursor lands on the actual button, not the card center.
 export type Locator =
   | { type: "card"; cardId: string }
   | { type: "column"; columnId: ColumnId }
   | { type: "add-card"; columnId: ColumnId }
+  | { type: "card-control"; cardId: string; control: string }
+  | { type: "column-control"; columnId: ColumnId; control: string }
   | { type: "point"; x: number; y: number };
 
 // The choreography the tool layer uses to make actions visually traceable.
 export interface Embodiment {
   click: (locator: Locator) => Promise<void>;
-  drag: (from: Locator, to: Locator) => Promise<void>;
+  drag: (from: Locator, to: Locator, onDrop?: () => void) => Promise<void>;
   point: (x: number, y: number) => Promise<void>;
   getMode: () => InteractionMode;
   setMode: (mode: InteractionMode) => void;
@@ -89,17 +93,29 @@ export const DWELL = {
   drop: 200,
 } as const;
 
-const SELECTORS: Record<Exclude<Locator["type"], "point">, (id: string) => string> = {
-  card: (id) => `[data-agent="card"][data-card-id="${CSS.escape(id)}"]`,
-  column: (id) => `[data-agent="column"][data-column-id="${CSS.escape(id)}"]`,
-  "add-card": (id) =>
-    `[data-agent="column"][data-column-id="${CSS.escape(id)}"] [data-agent="add-card"]`,
-};
+const cardSelector = (id: string) => `[data-agent="card"][data-card-id="${CSS.escape(id)}"]`;
+const columnSelector = (id: string) => `[data-agent="column"][data-column-id="${CSS.escape(id)}"]`;
+const query = (selector: string) => document.querySelector<HTMLElement>(selector);
 
 export function locateElement(locator: Locator): HTMLElement | null {
-  if (locator.type === "point") return null;
-  const id = locator.type === "card" ? locator.cardId : locator.columnId;
-  return document.querySelector<HTMLElement>(SELECTORS[locator.type](id));
+  switch (locator.type) {
+    case "point":
+      return null;
+    case "card":
+      return query(cardSelector(locator.cardId));
+    case "column":
+      return query(columnSelector(locator.columnId));
+    case "add-card":
+      return query(`${columnSelector(locator.columnId)} [data-agent="add-card"]`);
+    case "card-control": {
+      const base = cardSelector(locator.cardId);
+      return query(`${base} [data-agent-control="${CSS.escape(locator.control)}"]`) ?? query(base);
+    }
+    case "column-control": {
+      const base = columnSelector(locator.columnId);
+      return query(`${base} [data-agent-control="${CSS.escape(locator.control)}"]`) ?? query(base);
+    }
+  }
 }
 
 // Center of an element in viewport coordinates, scrolling it into view first if

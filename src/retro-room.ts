@@ -229,6 +229,14 @@ export class RetroRoom extends DurableObject<Env> {
         );
         break;
 
+      case "drag:start":
+        this.broadcast({ type: "drag:start", userId: session.id, cardId: msg.cardId }, ws);
+        break;
+
+      case "drag:end":
+        this.broadcast({ type: "drag:end", userId: session.id }, ws);
+        break;
+
       case "card:create":
         this.handleCardCreate(ws, session, msg.columnId, msg.content);
         break;
