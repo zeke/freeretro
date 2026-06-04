@@ -3,13 +3,22 @@ import {
   draggable,
   dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import type { Card as CardType, Reaction, Upvote, ClientMessage } from "../../types";
+import type {
+  Card as CardType,
+  Reaction,
+  Upvote,
+  ClientMessage,
+  ColumnId,
+  RetroColumn,
+} from "../../types";
 import { EmojiReaction } from "./EmojiReaction";
+import { MoveCardMenu } from "./MoveCardMenu";
 import { CardGroup } from "./CardGroup";
 
 interface RetroCardProps {
   card: CardType;
   index: number;
+  columns: RetroColumn[];
   groupedCards: CardType[];
   reactions: Reaction[];
   upvotes: Upvote[];
@@ -23,6 +32,7 @@ interface RetroCardProps {
 export function RetroCard({
   card,
   index,
+  columns,
   groupedCards,
   reactions,
   upvotes,
@@ -129,6 +139,16 @@ export function RetroCard({
     send({ type: "card:delete", cardId: card.id });
   };
 
+  const handleMove = (targetColumnId: ColumnId) => {
+    if (targetColumnId === card.columnId) return;
+    const cardsInColumn = allCards
+      .filter((c) => c.columnId === targetColumnId && c.groupId === null)
+      .sort((a, b) => a.position - b.position);
+    const lastCard = cardsInColumn[cardsInColumn.length - 1];
+    const position = lastCard ? lastCard.position + 1 : 1;
+    send({ type: "card:move", cardId: card.id, columnId: targetColumnId, position });
+  };
+
   // Aggregate reactions by emoji
   const reactionCounts = reactions.reduce(
     (acc, r) => {
@@ -226,6 +246,7 @@ export function RetroCard({
               >
                 ↑ {upvotes.length}
               </button>
+              <MoveCardMenu columns={columns} currentColumnId={card.columnId} onMove={handleMove} />
               <button
                 onClick={handleDelete}
                 className="text-cf-text-muted rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"

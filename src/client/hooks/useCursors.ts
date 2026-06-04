@@ -9,6 +9,18 @@ interface CursorPosition {
   lastSeen: number;
 }
 
+// Agent-friendly hook: automated visitors that navigate by manipulating the DOM
+// (rather than moving a real mouse) can call window.freeretro.moveCursor(clientX,
+// clientY) to broadcast their pointer to everyone else in the room, just like a
+// human moving the mouse does.
+declare global {
+  interface Window {
+    freeretro?: {
+      moveCursor: (clientX: number, clientY: number) => boolean;
+    };
+  }
+}
+
 export function useCursors(
   send: (msg: ClientMessage) => void,
   subscribe: (handler: (msg: ServerMessage) => void) => () => void,
@@ -76,31 +88,58 @@ export function useCursors(
     return () => clearInterval(interval);
   }, []);
 
-  // Broadcast local cursor position
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
+  // Convert viewport coordinates to board-relative ratios and broadcast.
+  const broadcastCursor = useCallback(
+    (clientX: number, clientY: number) => {
+      const board = boardRef.current;
+      if (!board) return false;
+
+      const rect = board.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return false;
+
+      const x = (clientX - rect.left) / rect.width;
+      const y = (clientY - rect.top) / rect.height;
+
+      send({ type: "cursor", x, y });
+      return true;
+    },
+    [send],
+  );
+
+  // Broadcast local cursor position from real pointer movement, throttled.
+  const handlePointerMove = useCallback(
+    (e: PointerEvent | MouseEvent) => {
       const now = Date.now();
       if (now - lastSendRef.current < 50) return;
       lastSendRef.current = now;
-
-      const board = boardRef.current;
-      if (!board) return;
-
-      const rect = board.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
-
-      send({ type: "cursor", x, y });
+      broadcastCursor(e.clientX, e.clientY);
     },
-    [send],
+    [broadcastCursor],
   );
 
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
-    board.addEventListener("mousemove", handleMouseMove);
-    return () => board.removeEventListener("mousemove", handleMouseMove);
-  }, [handleMouseMove]);
+    // pointermove covers mouse, pen, and touch, and is dispatched by automated
+    // browser tooling; mousemove is kept as a fallback. The shared throttle in
+    // handlePointerMove dedupes when both fire.
+    board.addEventListener("pointermove", handlePointerMove);
+    board.addEventListener("mousemove", handlePointerMove);
+    return () => {
+      board.removeEventListener("pointermove", handlePointerMove);
+      board.removeEventListener("mousemove", handlePointerMove);
+    };
+  }, [handlePointerMove]);
+
+  // Expose a programmatic cursor API for agents that don't move a real mouse.
+  useEffect(() => {
+    window.freeretro = {
+      moveCursor: (clientX: number, clientY: number) => broadcastCursor(clientX, clientY),
+    };
+    return () => {
+      delete window.freeretro;
+    };
+  }, [broadcastCursor]);
 
   return { cursors, boardRef };
 }
