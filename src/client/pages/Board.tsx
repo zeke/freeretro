@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useRetroState } from "../hooks/useRetroState";
@@ -23,10 +23,19 @@ export function Board() {
 
   const { send, subscribe, connected, userId } = useWebSocket(retroId!, name);
   const state = useRetroState(subscribe);
-  const { cursors, clicks, boardRef, moveCursorTo, broadcastClick, setEmbodied, isEmbodied } =
-    useCursors(send, subscribe, userId, state.users, connected);
+  const {
+    cursors,
+    clicks,
+    drags,
+    boardRef,
+    moveCursorTo,
+    broadcastClick,
+    setEmbodied,
+    isEmbodied,
+  } = useCursors(send, subscribe, userId, state.users, connected);
   useAgentTools({ send, state, moveCursorTo, broadcastClick, setEmbodied, isEmbodied });
   const [copiedLink, setCopiedLink] = useState(false);
+  const draggedCardIds = useMemo(() => new Set(drags.values()), [drags]);
 
   useEffect(() => {
     if (name) {
@@ -272,10 +281,17 @@ export function Board() {
               userId={userId}
               blurred={state.blurred}
               allCards={state.cards}
+              draggedCardIds={draggedCardIds}
             />
           </div>
         ))}
-        <CursorOverlay cursors={cursors} clicks={clicks} boardRef={boardRef} />
+        <CursorOverlay
+          cursors={cursors}
+          clicks={clicks}
+          drags={drags}
+          cards={state.cards}
+          boardRef={boardRef}
+        />
       </div>
       <Footer />
     </div>

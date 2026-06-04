@@ -24,6 +24,7 @@ interface ColumnProps {
   userId: string;
   blurred: boolean;
   allCards: CardType[];
+  draggedCardIds: Set<string>;
 }
 
 export function Column({
@@ -39,6 +40,7 @@ export function Column({
   userId,
   blurred,
   allCards,
+  draggedCardIds,
 }: ColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -157,6 +159,7 @@ export function Column({
             userId={userId}
             blurred={blurred}
             allCards={allCards}
+            remoteDragging={draggedCardIds.has(card.id)}
           />
         ))}
         <CardForm onSubmit={handleCreateCard} />

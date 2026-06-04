@@ -152,7 +152,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ cardId, content }) => {
         if (typeof cardId !== "string") return err("cardId is required.");
         if (typeof content !== "string" || !content.trim()) return err("content is required.");
-        await embodiment.click({ type: "card", cardId });
+        await embodiment.click({ type: "card-control", cardId, control: "content" });
         send({ type: "card:update", cardId, content: content.trim() });
         return ok(`Updated card ${cardId}.`);
       },
@@ -167,7 +167,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
       execute: async ({ cardId }) => {
         if (typeof cardId !== "string") return err("cardId is required.");
-        await embodiment.click({ type: "card", cardId });
+        await embodiment.click({ type: "card-control", cardId, control: "delete" });
         send({ type: "card:delete", cardId });
         return ok(`Deleted card ${cardId}.`);
       },
@@ -190,8 +190,9 @@ export function createTools(ctx: ToolContext): AgentTool[] {
         if (!isColumnId(columnId)) return err(`Invalid columnId: ${String(columnId)}`);
         const resolved =
           typeof position === "number" ? position : endOfColumnPosition(getState().cards, columnId);
-        await embodiment.drag({ type: "card", cardId }, { type: "column", columnId });
-        send({ type: "card:move", cardId, columnId, position: resolved });
+        await embodiment.drag({ type: "card", cardId }, { type: "column", columnId }, () => {
+          send({ type: "card:move", cardId, columnId, position: resolved });
+        });
         return ok(`Moved card ${cardId} to ${columnId}.`);
       },
     },
@@ -205,7 +206,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
       execute: async ({ cardId }) => {
         if (typeof cardId !== "string") return err("cardId is required.");
-        await embodiment.click({ type: "card", cardId });
+        await embodiment.click({ type: "card-control", cardId, control: "upvote" });
         send({ type: "upvote:toggle", cardId });
         return ok(`Toggled upvote on card ${cardId}.`);
       },
@@ -224,7 +225,10 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ cardId, emoji }) => {
         if (typeof cardId !== "string") return err("cardId is required.");
         if (typeof emoji !== "string" || !emoji) return err("emoji is required.");
-        await embodiment.click({ type: "card", cardId });
+        // Aim at the existing reaction chip if present, else the "+" picker button.
+        const hasChip = getState().reactions.some((r) => r.cardId === cardId && r.emoji === emoji);
+        const control = hasChip ? `reaction-${emoji}` : "react";
+        await embodiment.click({ type: "card-control", cardId, control });
         send({ type: "reaction:toggle", cardId, emoji });
         return ok(`Toggled ${emoji} on card ${cardId}.`);
       },
@@ -243,7 +247,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ columnId, label }) => {
         if (!isColumnId(columnId)) return err(`Invalid columnId: ${String(columnId)}`);
         if (typeof label !== "string" || !label.trim()) return err("label is required.");
-        await embodiment.click({ type: "column", columnId });
+        await embodiment.click({ type: "column-control", columnId, control: "rename" });
         send({ type: "column:update", columnId, label: label.trim() });
         return ok(`Renamed ${columnId} to "${label.trim()}".`);
       },

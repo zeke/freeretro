@@ -68,6 +68,8 @@ export type ClientMessage =
   | { type: "join"; name: string }
   | { type: "cursor"; x: number; y: number; anchor?: CursorAnchor }
   | { type: "click"; x: number; y: number; anchor?: CursorAnchor }
+  | { type: "drag:start"; cardId: string }
+  | { type: "drag:end" }
   | { type: "card:create"; columnId: ColumnId; content: string }
   | { type: "card:update"; cardId: string; content: string }
   | { type: "card:delete"; cardId: string }
@@ -112,6 +114,8 @@ export type ServerMessage =
       y: number;
       anchor?: CursorAnchor;
     }
+  | { type: "drag:start"; userId: string; cardId: string }
+  | { type: "drag:end"; userId: string }
   | { type: "card:created"; card: Card }
   | { type: "card:updated"; card: Card }
   | { type: "card:deleted"; cardId: string }

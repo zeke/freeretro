@@ -7,7 +7,9 @@ import type { ClientMessage } from "../src/types";
 function fakeEmbodiment(): Embodiment {
   return {
     click: vi.fn(async () => {}),
-    drag: vi.fn(async () => {}),
+    drag: vi.fn(async (_from, _to, onDrop?: () => void) => {
+      onDrop?.();
+    }),
     point: vi.fn(async () => {}),
     getMode: vi.fn(() => "human" as const),
     setMode: vi.fn(),
@@ -88,6 +90,7 @@ describe("agent tools", () => {
     expect(embodiment.drag).toHaveBeenCalledWith(
       { type: "card", cardId: "b" },
       { type: "column", columnId: "challenges" },
+      expect.any(Function),
     );
     expect(sent).toEqual([{ type: "card:move", cardId: "b", columnId: "challenges", position: 8 }]);
   });
