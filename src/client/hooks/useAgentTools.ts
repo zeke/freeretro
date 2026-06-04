@@ -37,6 +37,7 @@ interface UseAgentToolsOptions {
     clientY: number,
     options?: { animate?: boolean },
   ) => Promise<void>;
+  broadcastClick: (clientX: number, clientY: number) => void;
   setEmbodied: (value: boolean) => void;
   isEmbodied: () => boolean;
 }
@@ -74,6 +75,8 @@ export function useAgentTools(options: UseAgentToolsOptions) {
   sendRef.current = options.send;
   const moveRef = useRef(options.moveCursorTo);
   moveRef.current = options.moveCursorTo;
+  const clickRef = useRef(options.broadcastClick);
+  clickRef.current = options.broadcastClick;
   const setEmbodiedRef = useRef(options.setEmbodied);
   setEmbodiedRef.current = options.setEmbodied;
   const isEmbodiedRef = useRef(options.isEmbodied);
@@ -93,6 +96,7 @@ export function useAgentTools(options: UseAgentToolsOptions) {
         const center = elementCenter(el);
         await moveRef.current(center.x, center.y, { animate: true });
         await sleep(DWELL.click);
+        clickRef.current(center.x, center.y);
       },
       async drag(from, to) {
         if (modeRef.current !== "human") return;
@@ -101,12 +105,14 @@ export function useAgentTools(options: UseAgentToolsOptions) {
           const center = elementCenter(fromEl);
           await moveRef.current(center.x, center.y, { animate: true });
           await sleep(DWELL.grab);
+          clickRef.current(center.x, center.y);
         }
         const toEl = locateElement(to);
         if (toEl) {
           const center = elementCenter(toEl);
           await moveRef.current(center.x, center.y, { animate: true });
           await sleep(DWELL.drop);
+          clickRef.current(center.x, center.y);
         }
       },
       async point(x, y) {

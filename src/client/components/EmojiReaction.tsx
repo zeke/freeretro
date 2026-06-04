@@ -42,6 +42,7 @@ export function EmojiReaction({ onSelect }: EmojiReactionProps) {
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         type="button"
+        data-agent-control="react"
         className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange inline-flex items-center rounded-full border border-dashed px-2 py-0.5 text-xs transition-all"
       >
         +
@@ -59,6 +60,7 @@ export function EmojiReaction({ onSelect }: EmojiReactionProps) {
                 <button
                   key={emoji}
                   type="button"
+                  data-agent-control={`emoji-${emoji}`}
                   onClick={() => {
                     onSelect(emoji);
                     setIsOpen(false);

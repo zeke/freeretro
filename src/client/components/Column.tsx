@@ -131,6 +131,7 @@ export function Column({
           <button
             type="button"
             onClick={() => setIsEditingLabel(true)}
+            data-agent-control="rename"
             title="Rename column"
             className="text-cf-text hover:text-cf-orange truncate text-left font-medium tracking-tight transition-colors"
           >

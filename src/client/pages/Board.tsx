@@ -23,14 +23,9 @@ export function Board() {
 
   const { send, subscribe, connected, userId } = useWebSocket(retroId!, name);
   const state = useRetroState(subscribe);
-  const { cursors, boardRef, moveCursorTo, setEmbodied, isEmbodied } = useCursors(
-    send,
-    subscribe,
-    userId,
-    state.users,
-    connected,
-  );
-  useAgentTools({ send, state, moveCursorTo, setEmbodied, isEmbodied });
+  const { cursors, clicks, boardRef, moveCursorTo, broadcastClick, setEmbodied, isEmbodied } =
+    useCursors(send, subscribe, userId, state.users, connected);
+  useAgentTools({ send, state, moveCursorTo, broadcastClick, setEmbodied, isEmbodied });
   const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
@@ -185,6 +180,7 @@ export function Board() {
             <button
               type="button"
               onClick={() => setIsEditingTitle(true)}
+              data-agent-control="title"
               title="Rename retro"
               className="text-cf-text hover:text-cf-orange text-left text-lg font-medium tracking-tight transition-colors"
             >
@@ -218,24 +214,28 @@ export function Board() {
 
           <button
             onClick={copyLink}
+            data-agent-control="share"
             className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
           >
             {copiedLink ? "Copied!" : "Share link"}
           </button>
           <button
             onClick={toggleBlur}
+            data-agent-control="blur"
             className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
           >
             {state.blurred ? "Show cards" : "Blur cards"}
           </button>
           <button
             onClick={toggleSort}
+            data-agent-control="sort"
             className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
           >
             {state.sortByUpvotes ? "Manual order" : "Sort by votes"}
           </button>
           <button
             onClick={deleteRetro}
+            data-agent-control="delete-retro"
             className="border-cf-border text-cf-text-muted rounded-full border px-4 py-1.5 text-sm transition-all hover:border-red-400 hover:text-red-500"
           >
             Delete
@@ -275,7 +275,7 @@ export function Board() {
             />
           </div>
         ))}
-        <CursorOverlay cursors={cursors} boardRef={boardRef} />
+        <CursorOverlay cursors={cursors} clicks={clicks} boardRef={boardRef} />
       </div>
       <Footer />
     </div>

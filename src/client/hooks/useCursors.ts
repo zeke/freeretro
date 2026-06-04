@@ -1,13 +1,23 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import type { ClientMessage, ServerMessage } from "../../types";
+import type { ClientMessage, CursorAnchor, ServerMessage } from "../../types";
 import { smoothDamp } from "../agent/embodiment";
+import { computeAnchor } from "../agent/anchor";
 
-interface CursorPosition {
+export interface CursorPosition {
   x: number;
   y: number;
+  anchor?: CursorAnchor;
   name: string;
   color: string;
   lastSeen: number;
+}
+
+export interface ClickRipple {
+  x: number;
+  y: number;
+  anchor?: CursorAnchor;
+  color: string;
+  born: number;
 }
 
 interface MoveOptions {
@@ -34,6 +44,7 @@ export function useCursors(
   connected: boolean,
 ) {
   const [cursors, setCursors] = useState<Map<string, CursorPosition>>(new Map());
+  const [clicks, setClicks] = useState<Map<string, ClickRipple>>(new Map());
   const userColorsRef = useRef<Map<string, string>>(new Map());
   const lastSendRef = useRef(0);
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -78,12 +89,31 @@ export function useCursors(
           next.set(msg.userId, {
             x: msg.x,
             y: msg.y,
+            anchor: msg.anchor,
             name: msg.name,
             color: msg.color ?? userColorsRef.current.get(msg.userId) ?? "#FF4801",
             lastSeen: Date.now(),
           });
           return next;
         });
+      }
+
+      if (msg.type === "click" && msg.userId !== userId) {
+        const id = crypto.randomUUID();
+        const color = msg.color ?? userColorsRef.current.get(msg.userId) ?? "#FF4801";
+        setClicks((prev) => {
+          const next = new Map(prev);
+          next.set(id, { x: msg.x, y: msg.y, anchor: msg.anchor, color, born: performance.now() });
+          return next;
+        });
+        setTimeout(() => {
+          setClicks((prev) => {
+            if (!prev.has(id)) return prev;
+            const next = new Map(prev);
+            next.delete(id);
+            return next;
+          });
+        }, 600);
       }
 
       if (msg.type === "user:left") {
@@ -113,21 +143,26 @@ export function useCursors(
     return () => clearInterval(interval);
   }, []);
 
-  // Send a viewport coordinate to everyone else as a board-relative ratio.
+  // Send a viewport coordinate to everyone else, anchored to the element under
+  // it so it resolves to the same spot on any viewport.
   const transmit = useCallback(
     (clientX: number, clientY: number) => {
       const board = boardRef.current;
       if (!board) return false;
-
-      const rect = board.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return false;
-
-      send({
-        type: "cursor",
-        x: (clientX - rect.left) / rect.width,
-        y: (clientY - rect.top) / rect.height,
-      });
+      const { anchor, x, y } = computeAnchor(board, clientX, clientY);
+      send({ type: "cursor", x, y, anchor });
       return true;
+    },
+    [send],
+  );
+
+  // Broadcast a click effect at a viewport coordinate.
+  const broadcastClick = useCallback(
+    (clientX: number, clientY: number) => {
+      const board = boardRef.current;
+      if (!board) return;
+      const { anchor, x, y } = computeAnchor(board, clientX, clientY);
+      send({ type: "click", x, y, anchor });
     },
     [send],
   );
@@ -263,19 +298,29 @@ export function useCursors(
     [transmit],
   );
 
+  const handlePointerDown = useCallback(
+    (e: PointerEvent | MouseEvent) => {
+      broadcastClick(e.clientX, e.clientY);
+    },
+    [broadcastClick],
+  );
+
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
     // pointermove covers mouse, pen, and touch, and is dispatched by automated
     // browser tooling; mousemove is kept as a fallback. The shared throttle in
-    // handlePointerMove dedupes when both fire.
+    // handlePointerMove dedupes when both fire. pointerdown broadcasts a click
+    // ripple so real clicks (human or agent) are visible to everyone.
     board.addEventListener("pointermove", handlePointerMove);
     board.addEventListener("mousemove", handlePointerMove);
+    board.addEventListener("pointerdown", handlePointerDown);
     return () => {
       board.removeEventListener("pointermove", handlePointerMove);
       board.removeEventListener("mousemove", handlePointerMove);
+      board.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [handlePointerMove]);
+  }, [handlePointerMove, handlePointerDown]);
 
   // Show the agent's cursor immediately on join.
   useEffect(() => {
@@ -301,5 +346,5 @@ export function useCursors(
     };
   }, []);
 
-  return { cursors, boardRef, moveCursorTo, setEmbodied, isEmbodied };
+  return { cursors, clicks, boardRef, moveCursorTo, broadcastClick, setEmbodied, isEmbodied };
 }

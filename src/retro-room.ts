@@ -208,6 +208,22 @@ export class RetroRoom extends DurableObject<Env> {
             color: session.color,
             x: msg.x,
             y: msg.y,
+            anchor: msg.anchor,
+          },
+          ws,
+        );
+        break;
+
+      case "click":
+        this.broadcast(
+          {
+            type: "click",
+            userId: session.id,
+            name: session.name,
+            color: session.color,
+            x: msg.x,
+            y: msg.y,
+            anchor: msg.anchor,
           },
           ws,
         );

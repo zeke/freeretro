@@ -44,6 +44,18 @@ export interface RetroUser {
   color: string;
 }
 
+// Where a remote cursor or click is pointing, resolved against the same element
+// on every viewport so it lands in the right place regardless of window size.
+// ox/oy are offsets within the resolved element (0..1), or board-relative
+// ratios when scope is "board".
+export interface CursorAnchor {
+  scope: "card" | "column" | "global" | "board";
+  id?: string;
+  control?: string;
+  ox: number;
+  oy: number;
+}
+
 export interface RetroSummary {
   id: string;
   title: string;
@@ -54,7 +66,8 @@ export interface RetroSummary {
 // WebSocket messages: Client → Server
 export type ClientMessage =
   | { type: "join"; name: string }
-  | { type: "cursor"; x: number; y: number }
+  | { type: "cursor"; x: number; y: number; anchor?: CursorAnchor }
+  | { type: "click"; x: number; y: number; anchor?: CursorAnchor }
   | { type: "card:create"; columnId: ColumnId; content: string }
   | { type: "card:update"; cardId: string; content: string }
   | { type: "card:delete"; cardId: string }
@@ -81,7 +94,24 @@ export type ServerMessage =
     }
   | { type: "user:joined"; user: RetroUser }
   | { type: "user:left"; userId: string }
-  | { type: "cursor"; userId: string; name: string; color: string; x: number; y: number }
+  | {
+      type: "cursor";
+      userId: string;
+      name: string;
+      color: string;
+      x: number;
+      y: number;
+      anchor?: CursorAnchor;
+    }
+  | {
+      type: "click";
+      userId: string;
+      name: string;
+      color: string;
+      x: number;
+      y: number;
+      anchor?: CursorAnchor;
+    }
   | { type: "card:created"; card: Card }
   | { type: "card:updated"; card: Card }
   | { type: "card:deleted"; cardId: string }
