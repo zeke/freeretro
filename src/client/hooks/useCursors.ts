@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { ClientMessage, ServerMessage } from "../../types";
-import { durationForDistance, easeInOutCubic } from "../agent/embodiment";
+import { smoothDamp } from "../agent/embodiment";
 
 interface CursorPosition {
   x: number;
@@ -18,6 +18,14 @@ interface MoveOptions {
 // don't cull it. Must stay below the 5s stale-cursor cutoff below.
 const HEARTBEAT_MS = 3000;
 
+// Cursor motion feel. SMOOTH_TIME is roughly how long the cursor takes to reach
+// a target; MAX_SPEED keeps long sweeps from teleporting. SEND_INTERVAL_MS
+// throttles how often positions go over the wire during an animation.
+const SMOOTH_TIME = 0.22;
+const MAX_SPEED = 3200;
+const SEND_INTERVAL_MS = 33;
+const ARRIVAL_PX = 1.2;
+
 export function useCursors(
   send: (msg: ClientMessage) => void,
   subscribe: (handler: (msg: ServerMessage) => void) => () => void,
@@ -33,11 +41,17 @@ export function useCursors(
   // Embodiment state. Automated browsers (navigator.webdriver) get a visible,
   // persistent cursor by default; humans keep the original behavior.
   const embodiedRef = useRef(typeof navigator !== "undefined" && navigator.webdriver === true);
-  const currentPosRef = useRef<{ x: number; y: number } | null>(null);
   const connectedRef = useRef(connected);
-  const animRef = useRef<{ interval: ReturnType<typeof setInterval>; resolve: () => void } | null>(
-    null,
-  );
+
+  // Cursor motion. The position chases a target each frame via SmoothDamp so the
+  // movement reads as a hand, and retargeting mid-flight stays continuous.
+  const posRef = useRef<{ x: number; y: number } | null>(null);
+  const targetRef = useRef<{ x: number; y: number } | null>(null);
+  const velRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef<number | null>(null);
+  const lastFrameRef = useRef(0);
+  const lastBroadcastRef = useRef(0);
+  const arrivalResolversRef = useRef<(() => void)[]>([]);
 
   useEffect(() => {
     connectedRef.current = connected;
@@ -99,8 +113,8 @@ export function useCursors(
     return () => clearInterval(interval);
   }, []);
 
-  // Convert viewport coordinates to board-relative ratios and broadcast.
-  const broadcastCursor = useCallback(
+  // Send a viewport coordinate to everyone else as a board-relative ratio.
+  const transmit = useCallback(
     (clientX: number, clientY: number) => {
       const board = boardRef.current;
       if (!board) return false;
@@ -108,7 +122,6 @@ export function useCursors(
       const rect = board.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return false;
 
-      currentPosRef.current = { x: clientX, y: clientY };
       send({
         type: "cursor",
         x: (clientX - rect.left) / rect.width,
@@ -119,51 +132,101 @@ export function useCursors(
     [send],
   );
 
-  const cancelAnimation = useCallback(() => {
-    if (animRef.current) {
-      clearInterval(animRef.current.interval);
-      animRef.current.resolve();
-      animRef.current = null;
-    }
+  const resolveArrivals = useCallback(() => {
+    const resolvers = arrivalResolversRef.current;
+    arrivalResolversRef.current = [];
+    for (const resolve of resolvers) resolve();
   }, []);
 
+  // The follow loop: ease the current position toward the target each frame.
+  const tick = useCallback(
+    (now: number) => {
+      const target = targetRef.current;
+      const pos = posRef.current;
+      if (!target || !pos) {
+        rafRef.current = null;
+        return;
+      }
+
+      const dt = Math.min(0.05, (now - lastFrameRef.current) / 1000 || 0);
+      lastFrameRef.current = now;
+
+      const dampX = smoothDamp(pos.x, target.x, velRef.current.x, SMOOTH_TIME, dt, MAX_SPEED);
+      const dampY = smoothDamp(pos.y, target.y, velRef.current.y, SMOOTH_TIME, dt, MAX_SPEED);
+      pos.x = dampX.value;
+      pos.y = dampY.value;
+      velRef.current = { x: dampX.velocity, y: dampY.velocity };
+
+      if (now - lastBroadcastRef.current >= SEND_INTERVAL_MS) {
+        lastBroadcastRef.current = now;
+        transmit(pos.x, pos.y);
+      }
+
+      const arrived =
+        Math.hypot(target.x - pos.x, target.y - pos.y) < ARRIVAL_PX &&
+        Math.hypot(velRef.current.x, velRef.current.y) < 4;
+
+      if (arrived) {
+        pos.x = target.x;
+        pos.y = target.y;
+        velRef.current = { x: 0, y: 0 };
+        transmit(pos.x, pos.y);
+        rafRef.current = null;
+        resolveArrivals();
+        return;
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    },
+    [transmit, resolveArrivals],
+  );
+
+  const ensureLoop = useCallback(() => {
+    if (rafRef.current === null) {
+      lastFrameRef.current = performance.now();
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }, [tick]);
+
+  // Jump the cursor to a point with no animation.
+  const jumpTo = useCallback(
+    (clientX: number, clientY: number) => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      posRef.current = { x: clientX, y: clientY };
+      targetRef.current = { x: clientX, y: clientY };
+      velRef.current = { x: 0, y: 0 };
+      transmit(clientX, clientY);
+      resolveArrivals();
+    },
+    [transmit, resolveArrivals],
+  );
+
   // Move the cursor to a viewport coordinate. When embodied and animated, glide
-  // there along an eased path so observers can follow; otherwise jump directly.
+  // there via the follow loop; otherwise jump directly.
   const moveCursorTo = useCallback(
     (clientX: number, clientY: number, options?: MoveOptions): Promise<void> => {
       const animate = options?.animate ?? true;
       if (!animate || !embodiedRef.current) {
-        broadcastCursor(clientX, clientY);
+        jumpTo(clientX, clientY);
         return Promise.resolve();
       }
 
-      cancelAnimation();
-      const from = currentPosRef.current ?? { x: clientX, y: clientY };
-      const dx = clientX - from.x;
-      const dy = clientY - from.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 1) {
-        broadcastCursor(clientX, clientY);
+      if (!posRef.current) {
+        // No known position yet: appear at the target rather than flying in.
+        jumpTo(clientX, clientY);
         return Promise.resolve();
       }
 
-      const duration = durationForDistance(dist);
-      const start = performance.now();
+      targetRef.current = { x: clientX, y: clientY };
+      ensureLoop();
       return new Promise<void>((resolve) => {
-        const interval = setInterval(() => {
-          const t = Math.min(1, (performance.now() - start) / duration);
-          const e = easeInOutCubic(t);
-          broadcastCursor(from.x + dx * e, from.y + dy * e);
-          if (t >= 1) {
-            clearInterval(interval);
-            animRef.current = null;
-            resolve();
-          }
-        }, 28);
-        animRef.current = { interval, resolve };
+        arrivalResolversRef.current.push(resolve);
       });
     },
-    [broadcastCursor, cancelAnimation],
+    [jumpTo, ensureLoop],
   );
 
   // Place the cursor at the center of the board (used on join).
@@ -172,13 +235,13 @@ export function useCursors(
     if (!board) return;
     const rect = board.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    broadcastCursor(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  }, [broadcastCursor]);
+    jumpTo(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }, [jumpTo]);
 
   const setEmbodied = useCallback(
     (value: boolean) => {
       embodiedRef.current = value;
-      if (value && connectedRef.current && !currentPosRef.current) {
+      if (value && connectedRef.current && !posRef.current) {
         broadcastCenter();
       }
     },
@@ -193,9 +256,11 @@ export function useCursors(
       const now = Date.now();
       if (now - lastSendRef.current < 50) return;
       lastSendRef.current = now;
-      broadcastCursor(e.clientX, e.clientY);
+      posRef.current = { x: e.clientX, y: e.clientY };
+      targetRef.current = { x: e.clientX, y: e.clientY };
+      transmit(e.clientX, e.clientY);
     },
-    [broadcastCursor],
+    [transmit],
   );
 
   useEffect(() => {
@@ -222,15 +287,19 @@ export function useCursors(
   // Keep an idle agent cursor alive so observers don't cull it.
   useEffect(() => {
     const interval = setInterval(() => {
-      const pos = currentPosRef.current;
-      if (connectedRef.current && embodiedRef.current && pos) {
-        broadcastCursor(pos.x, pos.y);
+      const pos = posRef.current;
+      if (connectedRef.current && embodiedRef.current && pos && rafRef.current === null) {
+        transmit(pos.x, pos.y);
       }
     }, HEARTBEAT_MS);
     return () => clearInterval(interval);
-  }, [broadcastCursor]);
+  }, [transmit]);
 
-  useEffect(() => cancelAnimation, [cancelAnimation]);
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
-  return { cursors, boardRef, broadcastCursor, moveCursorTo, setEmbodied, isEmbodied };
+  return { cursors, boardRef, moveCursorTo, setEmbodied, isEmbodied };
 }

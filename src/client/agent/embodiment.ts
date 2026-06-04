@@ -23,6 +23,45 @@ export interface Point {
   y: number;
 }
 
+export interface DampResult {
+  value: number;
+  velocity: number;
+}
+
+// Critically-damped smoothing (Game Programming Gems "SmoothDamp"). Eases in and
+// out like a real hand, never overshoots, and retargets smoothly if the target
+// moves mid-flight. smoothTime is roughly how long it takes to reach the target.
+export function smoothDamp(
+  current: number,
+  target: number,
+  velocity: number,
+  smoothTime: number,
+  dt: number,
+  maxSpeed = Infinity,
+): DampResult {
+  const time = Math.max(0.0001, smoothTime);
+  const omega = 2 / time;
+  const x = omega * dt;
+  const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+
+  let change = current - target;
+  const maxChange = maxSpeed * time;
+  change = Math.min(Math.max(change, -maxChange), maxChange);
+  const movedTarget = current - change;
+
+  const temp = (velocity + omega * change) * dt;
+  let newVelocity = (velocity - omega * temp) * exp;
+  let output = movedTarget + (change + temp) * exp;
+
+  // Clamp to avoid overshooting past the target.
+  if (target - current > 0 === output > target) {
+    output = target;
+    newVelocity = 0;
+  }
+
+  return { value: output, velocity: newVelocity };
+}
+
 // Cubic ease-in-out: slow start, quick middle, gentle stop, like a real hand.
 export function easeInOutCubic(t: number): number {
   const clamped = Math.min(1, Math.max(0, t));
