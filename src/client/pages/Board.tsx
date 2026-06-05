@@ -35,7 +35,7 @@ export function Board() {
     isEmbodied,
   } = useCursors(send, subscribe, userId, state.users, connected);
   useAgentTools({ send, state, moveCursorTo, broadcastClick, setEmbodied, isEmbodied });
-  useDemoSwarm(retroId);
+  const demoActive = useDemoSwarm(retroId);
   const [copiedLink, setCopiedLink] = useState(false);
   const draggedCardIds = useMemo(() => new Set(drags.values()), [drags]);
 
@@ -295,6 +295,12 @@ export function Board() {
           boardRef={boardRef}
         />
       </div>
+      {demoActive && (
+        <div className="border-cf-orange bg-cf-bg-card text-cf-orange fixed bottom-4 left-4 z-[10000] flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm">
+          <span className="bg-cf-orange inline-block h-2 w-2 animate-pulse rounded-full" />
+          Demo mode
+        </div>
+      )}
       <Footer />
     </div>
   );
