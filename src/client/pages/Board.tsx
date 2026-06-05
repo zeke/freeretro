@@ -4,6 +4,7 @@ import { useWebSocket } from "../hooks/useWebSocket";
 import { useRetroState } from "../hooks/useRetroState";
 import { useCursors } from "../hooks/useCursors";
 import { useAgentTools } from "../hooks/useAgentTools";
+import { useDemoSwarm } from "../hooks/useDemoSwarm";
 import { Column } from "../components/Column";
 import { CursorOverlay } from "../components/CursorOverlay";
 import { NamePrompt } from "../components/NamePrompt";
@@ -34,6 +35,7 @@ export function Board() {
     isEmbodied,
   } = useCursors(send, subscribe, userId, state.users, connected);
   useAgentTools({ send, state, moveCursorTo, broadcastClick, setEmbodied, isEmbodied });
+  useDemoSwarm(retroId);
   const [copiedLink, setCopiedLink] = useState(false);
   const draggedCardIds = useMemo(() => new Set(drags.values()), [drags]);
 
