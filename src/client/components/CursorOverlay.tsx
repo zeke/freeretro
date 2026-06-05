@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { resolvePoint } from "../agent/anchor";
+import { smoothDamp } from "../agent/embodiment";
 import type { ClickRipple, CursorPosition } from "../hooks/useCursors";
 import type { Card } from "../../types";
 
@@ -12,16 +13,21 @@ interface CursorOverlayProps {
 }
 
 const RIPPLE_MS = 500;
-// Observer-side easing: each frame the rendered cursor moves this fraction of
-// the way to its resolved target, upsampling network updates to 60fps and
-// smoothing scrolls without adding noticeable lag.
-const FOLLOW = 0.35;
+// Observer-side easing. Senders only broadcast their target position; each
+// observer eases its rendered cursor toward that target every frame with
+// SmoothDamp (ease in/out, no overshoot). This runs in the viewer's foreground
+// tab at 60fps, so motion stays smooth and continuous no matter how sparsely or
+// irregularly a sender (which may be a throttled background tab) broadcasts.
+const SMOOTH_TIME = 0.16;
+const MAX_SPEED = 2800;
 
 export function CursorOverlay({ cursors, clicks, drags, cards, boardRef }: CursorOverlayProps) {
   const cursorNodes = useRef(new Map<string, HTMLDivElement>());
   const clickNodes = useRef(new Map<string, HTMLDivElement>());
   const ghostNodes = useRef(new Map<string, HTMLDivElement>());
   const rendered = useRef(new Map<string, { x: number; y: number }>());
+  const velocities = useRef(new Map<string, { x: number; y: number }>());
+  const lastFrameRef = useRef(0);
   const cursorsRef = useRef(cursors);
   cursorsRef.current = cursors;
   const clicksRef = useRef(clicks);
@@ -31,8 +37,10 @@ export function CursorOverlay({ cursors, clicks, drags, cards, boardRef }: Curso
 
   useEffect(() => {
     let raf = 0;
-    const frame = () => {
+    const frame = (now: number) => {
       const board = boardRef.current;
+      const dt = Math.min(0.05, (now - lastFrameRef.current) / 1000 || 0);
+      lastFrameRef.current = now;
 
       for (const [id, cursor] of cursorsRef.current) {
         const node = cursorNodes.current.get(id);
@@ -46,15 +54,23 @@ export function CursorOverlay({ cursors, clicks, drags, cards, boardRef }: Curso
         if (!r) {
           r = { x: target.x, y: target.y };
           rendered.current.set(id, r);
+          velocities.current.set(id, { x: 0, y: 0 });
         }
-        r.x += (target.x - r.x) * FOLLOW;
-        r.y += (target.y - r.y) * FOLLOW;
+        const v = velocities.current.get(id) ?? { x: 0, y: 0 };
+        const dampX = smoothDamp(r.x, target.x, v.x, SMOOTH_TIME, dt, MAX_SPEED);
+        const dampY = smoothDamp(r.y, target.y, v.y, SMOOTH_TIME, dt, MAX_SPEED);
+        r.x = dampX.value;
+        r.y = dampY.value;
+        velocities.current.set(id, { x: dampX.velocity, y: dampY.velocity });
         node.style.opacity = "1";
         node.style.transform = `translate3d(${r.x}px, ${r.y}px, 0)`;
       }
 
       for (const id of rendered.current.keys()) {
-        if (!cursorsRef.current.has(id)) rendered.current.delete(id);
+        if (!cursorsRef.current.has(id)) {
+          rendered.current.delete(id);
+          velocities.current.delete(id);
+        }
       }
 
       // Dragged-card ghosts follow their owner's eased cursor position.
@@ -70,7 +86,6 @@ export function CursorOverlay({ cursors, clicks, drags, cards, boardRef }: Curso
         node.style.transform = `translate3d(${pos.x + 8}px, ${pos.y + 14}px, 0) rotate(-3deg)`;
       }
 
-      const now = performance.now();
       for (const [id, ripple] of clicksRef.current) {
         const node = clickNodes.current.get(id);
         if (!node) continue;

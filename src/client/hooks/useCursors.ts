@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { ClientMessage, CursorAnchor, ServerMessage } from "../../types";
-import { smoothDamp } from "../agent/embodiment";
 import { computeAnchor } from "../agent/anchor";
 
 export interface CursorPosition {
@@ -28,13 +27,16 @@ interface MoveOptions {
 // don't cull it. Must stay below the 5s stale-cursor cutoff below.
 const HEARTBEAT_MS = 3000;
 
-// Cursor motion feel. SMOOTH_TIME is roughly how long the cursor takes to reach
-// a target; MAX_SPEED keeps long sweeps from teleporting. SEND_INTERVAL_MS
-// throttles how often positions go over the wire during an animation.
-const SMOOTH_TIME = 0.22;
-const MAX_SPEED = 3200;
-const SEND_INTERVAL_MS = 33;
-const ARRIVAL_PX = 1.2;
+// The sender only broadcasts where it wants the cursor to be; observers animate
+// the glide. These estimate how long a move takes purely so the agent can time
+// its dwell/click after a move. They do not affect what observers see.
+const MOVE_SPEED_PX_PER_MS = 1.6;
+const MIN_MOVE_MS = 220;
+const MAX_MOVE_MS = 800;
+
+function estimateMoveMs(distance: number): number {
+  return Math.min(MAX_MOVE_MS, Math.max(MIN_MOVE_MS, distance / MOVE_SPEED_PX_PER_MS));
+}
 
 export function useCursors(
   send: (msg: ClientMessage) => void,
@@ -57,15 +59,9 @@ export function useCursors(
   const embodiedRef = useRef(typeof navigator !== "undefined" && navigator.webdriver === true);
   const connectedRef = useRef(connected);
 
-  // Cursor motion. The position chases a target each frame via SmoothDamp so the
-  // movement reads as a hand, and retargeting mid-flight stays continuous.
+  // The sender tracks only its last logical position (for distance estimates and
+  // anchoring). Visible easing happens on each observer.
   const posRef = useRef<{ x: number; y: number } | null>(null);
-  const targetRef = useRef<{ x: number; y: number } | null>(null);
-  const velRef = useRef({ x: 0, y: 0 });
-  const rafRef = useRef<number | null>(null);
-  const lastFrameRef = useRef(0);
-  const lastBroadcastRef = useRef(0);
-  const arrivalResolversRef = useRef<(() => void)[]>([]);
 
   useEffect(() => {
     connectedRef.current = connected;
@@ -211,101 +207,35 @@ export function useCursors(
     [send],
   );
 
-  const resolveArrivals = useCallback(() => {
-    const resolvers = arrivalResolversRef.current;
-    arrivalResolversRef.current = [];
-    for (const resolve of resolvers) resolve();
-  }, []);
-
-  // The follow loop: ease the current position toward the target each frame.
-  const tick = useCallback(
-    (now: number) => {
-      const target = targetRef.current;
-      const pos = posRef.current;
-      if (!target || !pos) {
-        rafRef.current = null;
-        return;
-      }
-
-      const dt = Math.min(0.05, (now - lastFrameRef.current) / 1000 || 0);
-      lastFrameRef.current = now;
-
-      const dampX = smoothDamp(pos.x, target.x, velRef.current.x, SMOOTH_TIME, dt, MAX_SPEED);
-      const dampY = smoothDamp(pos.y, target.y, velRef.current.y, SMOOTH_TIME, dt, MAX_SPEED);
-      pos.x = dampX.value;
-      pos.y = dampY.value;
-      velRef.current = { x: dampX.velocity, y: dampY.velocity };
-
-      if (now - lastBroadcastRef.current >= SEND_INTERVAL_MS) {
-        lastBroadcastRef.current = now;
-        transmit(pos.x, pos.y);
-      }
-
-      const arrived =
-        Math.hypot(target.x - pos.x, target.y - pos.y) < ARRIVAL_PX &&
-        Math.hypot(velRef.current.x, velRef.current.y) < 4;
-
-      if (arrived) {
-        pos.x = target.x;
-        pos.y = target.y;
-        velRef.current = { x: 0, y: 0 };
-        transmit(pos.x, pos.y);
-        rafRef.current = null;
-        resolveArrivals();
-        return;
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    },
-    [transmit, resolveArrivals],
-  );
-
-  const ensureLoop = useCallback(() => {
-    if (rafRef.current === null) {
-      lastFrameRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tick);
-    }
-  }, [tick]);
-
-  // Jump the cursor to a point with no animation.
+  // Set the cursor to a point immediately (no glide), broadcasting the target.
   const jumpTo = useCallback(
     (clientX: number, clientY: number) => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
       posRef.current = { x: clientX, y: clientY };
-      targetRef.current = { x: clientX, y: clientY };
-      velRef.current = { x: 0, y: 0 };
       transmit(clientX, clientY);
-      resolveArrivals();
     },
-    [transmit, resolveArrivals],
+    [transmit],
   );
 
-  // Move the cursor to a viewport coordinate. When embodied and animated, glide
-  // there via the follow loop; otherwise jump directly.
+  // Move the cursor to a viewport coordinate. The sender just broadcasts the
+  // destination; each observer eases toward it at 60fps, so motion stays smooth
+  // even when this (possibly backgrounded) tab's timers are throttled. The
+  // returned promise resolves after an estimated travel time so the caller can
+  // sequence a dwell/click after the move.
   const moveCursorTo = useCallback(
     (clientX: number, clientY: number, options?: MoveOptions): Promise<void> => {
       const animate = options?.animate ?? true;
-      if (!animate || !embodiedRef.current) {
-        jumpTo(clientX, clientY);
+      const from = posRef.current;
+      posRef.current = { x: clientX, y: clientY };
+      transmit(clientX, clientY);
+
+      if (!animate || !embodiedRef.current || !from) {
         return Promise.resolve();
       }
 
-      if (!posRef.current) {
-        // No known position yet: appear at the target rather than flying in.
-        jumpTo(clientX, clientY);
-        return Promise.resolve();
-      }
-
-      targetRef.current = { x: clientX, y: clientY };
-      ensureLoop();
-      return new Promise<void>((resolve) => {
-        arrivalResolversRef.current.push(resolve);
-      });
+      const distance = Math.hypot(clientX - from.x, clientY - from.y);
+      return new Promise<void>((resolve) => setTimeout(resolve, estimateMoveMs(distance)));
     },
-    [jumpTo, ensureLoop],
+    [transmit],
   );
 
   // Place the cursor at the center of the board (used on join).
@@ -336,7 +266,6 @@ export function useCursors(
       if (now - lastSendRef.current < 50) return;
       lastSendRef.current = now;
       posRef.current = { x: e.clientX, y: e.clientY };
-      targetRef.current = { x: e.clientX, y: e.clientY };
       transmit(e.clientX, e.clientY);
     },
     [transmit],
@@ -377,18 +306,12 @@ export function useCursors(
   useEffect(() => {
     const interval = setInterval(() => {
       const pos = posRef.current;
-      if (connectedRef.current && embodiedRef.current && pos && rafRef.current === null) {
+      if (connectedRef.current && embodiedRef.current && pos) {
         transmit(pos.x, pos.y);
       }
     }, HEARTBEAT_MS);
     return () => clearInterval(interval);
   }, [transmit]);
-
-  useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
 
   return {
     cursors,
