@@ -2,33 +2,19 @@
 
 Free Retro is a real-time retrospective board. Create an unlisted retro, share the link with your team, and delete it when you are done.
 
+Live at [freeretro.ziki.workers.dev](https://freeretro.ziki.workers.dev).
+
 Built with 🧡 by Cloudflare.
 
-## Development
+## What is this?
 
-```sh
-script/setup
-script/dev
-```
+Free Retro is a lightweight tool for running team retrospectives.
 
-## Checks
+Retrospectives are a simple way for people working together to reflect on a recent project, event, or collaboration. They create space to talk about what went well, what did not go so well, and what could be improved next time.
 
-```sh
-script/lint
-script/test
-npm run typecheck
-npm run build
-```
+Team retrospectives are especially useful because they encourage participation from everyone involved, not just the loudest voices in the room. Everyone gets a chance to add input before the group discusses it together.
 
-## Deployment
-
-This app runs on Cloudflare Workers with Durable Objects for real-time state. Deploy with:
-
-```sh
-script/deploy
-```
-
-CI deploys from `main` using the `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` GitHub Actions secrets.
+Every new retro gets a unique, unguessable URL that you can share with anyone. Free Retro is fun, multiplayer, hosted on Cloudflare, open source on GitHub, and free to use.
 
 ## For AI agents (automated browser sessions)
 
