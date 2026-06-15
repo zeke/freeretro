@@ -40,6 +40,7 @@ interface UseAgentToolsOptions {
   broadcastClick: (clientX: number, clientY: number) => void;
   setEmbodied: (value: boolean) => void;
   isEmbodied: () => boolean;
+  setName: (name: string) => void;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -81,6 +82,8 @@ export function useAgentTools(options: UseAgentToolsOptions) {
   setEmbodiedRef.current = options.setEmbodied;
   const isEmbodiedRef = useRef(options.isEmbodied);
   isEmbodiedRef.current = options.isEmbodied;
+  const setNameRef = useRef(options.setName);
+  setNameRef.current = options.setName;
   const modeRef = useRef<InteractionMode>("human");
 
   useEffect(() => {
@@ -134,6 +137,7 @@ export function useAgentTools(options: UseAgentToolsOptions) {
       send: (msg) => sendRef.current(msg),
       getState: () => stateRef.current,
       embodiment,
+      setName: (name) => setNameRef.current(name),
     });
     const unregister = registerTools(tools);
 

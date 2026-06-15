@@ -32,13 +32,15 @@ function snapshot(overrides: Partial<BoardSnapshot> = {}): BoardSnapshot {
 function setup(state: BoardSnapshot) {
   const sent: ClientMessage[] = [];
   const embodiment = fakeEmbodiment();
+  const setName = vi.fn();
   const tools = createTools({
     send: (msg) => sent.push(msg),
     getState: () => state,
     embodiment,
+    setName,
   });
   const byName = (name: string) => tools.find((t) => t.name === name)!;
-  return { sent, embodiment, tools, byName };
+  return { sent, embodiment, setName, tools, byName };
 }
 
 describe("agent tools", () => {
@@ -151,5 +153,21 @@ describe("agent tools", () => {
     await byName("set_interaction_mode").execute({ mode: "direct" });
 
     expect(embodiment.setMode).toHaveBeenCalledWith("direct");
+  });
+
+  it("set_name sets a trimmed name", async () => {
+    const { setName, byName } = setup(snapshot());
+    const result = await byName("set_name").execute({ name: "  Ada  " });
+
+    expect(result.isError).toBeFalsy();
+    expect(setName).toHaveBeenCalledWith("Ada");
+  });
+
+  it("set_name rejects an empty name", async () => {
+    const { setName, byName } = setup(snapshot());
+    const result = await byName("set_name").execute({ name: "   " });
+
+    expect(result.isError).toBe(true);
+    expect(setName).not.toHaveBeenCalled();
   });
 });

@@ -15,7 +15,12 @@ import { removeLocalRetro, saveLocalRetro } from "../localRetros";
 export function Board() {
   const { retroId } = useParams<{ retroId: string }>();
   const navigate = useNavigate();
-  const [name, setName] = useState(() => localStorage.getItem("retro-name") ?? "");
+  const isAutomated = typeof navigator !== "undefined" && navigator.webdriver === true;
+  const [name, setName] = useState(() => {
+    const stored = localStorage.getItem("retro-name");
+    if (stored) return stored;
+    return isAutomated ? "Agent" : "";
+  });
   const [showNamePrompt, setShowNamePrompt] = useState(!name);
   const [retro, setRetro] = useState<RetroSummary | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -34,7 +39,7 @@ export function Board() {
     setEmbodied,
     isEmbodied,
   } = useCursors(send, subscribe, userId, state.users, connected);
-  useAgentTools({ send, state, moveCursorTo, broadcastClick, setEmbodied, isEmbodied });
+  useAgentTools({ send, state, moveCursorTo, broadcastClick, setEmbodied, isEmbodied, setName });
   const demoActive = useDemoSwarm(retroId);
   const [copiedLink, setCopiedLink] = useState(false);
   const draggedCardIds = useMemo(() => new Set(drags.values()), [drags]);
