@@ -1,0 +1,102 @@
+# Free Retro
+
+Free Retro is a real-time collaborative retrospective board. Create an unlisted retro, share the link with your team, and delete it when you're done.
+
+## Important: this app requires a browser
+
+Free Retro is a client-rendered single-page application. If you arrived here via a plain HTTP fetch, you are seeing an empty HTML shell. To interact with the app, you must use a browser that executes JavaScript.
+
+The app exposes a full agent API via WebMCP (`document.modelContext`) and a convenience wrapper (`window.freeretro`) once a board page is loaded in a browser.
+
+## Quickstart for agents
+
+1. Open a browser and navigate to https://freeretro.ziki.workers.dev
+2. Create a retro via the UI or the REST API (see below)
+3. Navigate to the retro URL: https://freeretro.ziki.workers.dev/retro/<id>
+4. Once the board loads, call `window.freeretro.help()` in the browser console for full usage
+
+## REST API
+
+All retros are unlisted. There is no public listing or browse endpoint.
+
+### Create a retro
+
+POST /api/retros
+Content-Type: application/json
+
+{ "title": "Sprint 42 Retro", "createdBy": "agent" }
+
+Response 201:
+{ "id": "<uuid>", "title": "Sprint 42 Retro", "createdAt": 1234567890000, "createdBy": "agent" }
+
+### Get a retro
+
+GET /api/retros/:retroId
+
+Response 200: RetroSummary object, or 404 if not found.
+
+### Rename a retro
+
+PUT /api/retros/:retroId
+Content-Type: application/json
+
+{ "title": "New Title" }
+
+### Delete a retro
+
+DELETE /api/retros/:retroId
+
+Response: { "ok": true }
+
+### Connect via WebSocket
+
+GET /api/ws/:retroId
+Upgrade: websocket
+
+Optional query params:
+- userId: stable identifier for this agent session
+- name: display name shown to other users (default: "Anonymous")
+
+On connection the server sends a full `state` snapshot, then broadcasts incremental updates.
+
+## Browser agent API (requires JavaScript execution)
+
+Once a retro board is open in a browser, the following are available:
+
+### window.freeretro
+
+- `window.freeretro.help()` - print full usage to the console
+- `window.freeretro.tools` - array of all available tool descriptors
+- `window.freeretro.call(name, args)` - call a tool by name
+- `window.freeretro.getMode()` / `setMode('human'|'direct')` - interaction mode
+- `window.freeretro.moveCursor(x, y)` - move the visible cursor
+- `window.freeretro.isEmbodied()` / `setEmbodied(value)` - show/hide agent cursor
+
+### document.modelContext (WebMCP)
+
+- `document.modelContext.executeTool(name, args)` - call any tool directly
+
+### Available tools
+
+- list_cards - list all cards with column, author, content, upvote count, reactions
+- list_columns - list columns with labels and card counts
+- list_users - list connected users and agents
+- get_board_state - blurred state, sort mode, counts
+- create_card(columnId, content) - add a card; columnId is one of: highlights, challenges, questions, notes
+- edit_card(cardId, content) - replace card text
+- delete_card(cardId) - delete a card
+- move_card(cardId, columnId, position?) - move a card to another column
+- upvote_card(cardId) - toggle your upvote
+- react_to_card(cardId, emoji) - toggle an emoji reaction
+- rename_column(columnId, label) - rename a column
+- set_blur(blurred) - blur or reveal all cards for everyone
+- set_sort(sortByUpvotes) - sort by upvotes or restore manual order
+- set_cursor(x, y) - move your visible cursor to viewport coordinates
+- set_interaction_mode(mode) - "human" animates cursor so people can follow; "direct" applies changes instantly
+
+## Interaction modes
+
+- human (default): your cursor glides to each target so people watching can follow along
+- direct: changes apply instantly without cursor movement
+
+Switch with `window.freeretro.setMode('human')` or the `set_interaction_mode` tool.

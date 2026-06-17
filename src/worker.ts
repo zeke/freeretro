@@ -6,6 +6,14 @@ export { RetroRoom } from "./retro-room";
 
 const app = new Hono<{ Bindings: Env }>();
 
+app.use("*", async (c, next) => {
+  await next();
+  c.header(
+    "X-Agent-Instructions",
+    "This app requires a browser. See /llms.txt for agent API docs.",
+  );
+});
+
 // API: Create a new retro
 app.post("/api/retros", async (c) => {
   const body = await c.req.json<{ title: string; createdBy?: string }>();
