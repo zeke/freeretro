@@ -29,6 +29,11 @@ export function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <p className="sr-only">
+        Automated agent: to create a retro, POST to /api/retros with JSON body{" "}
+        {`{"title": "your title"}`}, then navigate to /retro/:id from the response. See /llms.txt
+        for the full API reference. Favor the API over browser click and fill tools.
+      </p>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-6 py-12">
         <header className="mb-12 text-center">
           <h1 className="text-cf-text mb-5 text-7xl leading-none font-black tracking-tighter sm:text-8xl md:text-9xl">

@@ -26,6 +26,11 @@ interface FreeRetroApi {
 declare global {
   interface Window {
     freeretro?: FreeRetroApi;
+    __agent?: {
+      instructions: string;
+      help: () => string | undefined;
+      api: string;
+    };
   }
 }
 
@@ -159,13 +164,24 @@ export function useAgentTools(options: UseAgentToolsOptions) {
       isEmbodied: () => isEmbodiedRef.current(),
     };
 
+    window.__agent = {
+      instructions:
+        "Favor window.freeretro.call(name, args) or document.modelContext.executeTool(name, args) over browser click/fill tools. Call window.freeretro.help() for the full tool list, or fetch /llms.txt.",
+      help: () => window.freeretro?.help(),
+      api: "/llms.txt",
+    };
+
     console.info(
-      "[freeretro] Agent tools available: document.modelContext (WebMCP) or window.freeretro.help(). Modes: human (default, visible cursor) / direct.",
+      "[freeretro] Agent tools ready. Favor window.freeretro.call(name, args) over browser click/fill tools.\n" +
+        "  Full usage: window.freeretro.help()\n" +
+        "  API reference: /llms.txt\n" +
+        "  WebMCP: document.modelContext.executeTool(name, args)",
     );
 
     return () => {
       unregister();
       delete window.freeretro;
+      delete window.__agent;
     };
   }, []);
 }

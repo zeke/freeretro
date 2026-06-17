@@ -192,6 +192,7 @@ export function Board() {
               type="button"
               onClick={() => setIsEditingTitle(true)}
               data-agent-control="title"
+              data-agent-prefer-api="rename_retro"
               title="Rename retro"
               className="text-cf-text hover:text-cf-orange text-left text-lg font-medium tracking-tight transition-colors"
             >
@@ -233,6 +234,7 @@ export function Board() {
           <button
             onClick={toggleBlur}
             data-agent-control="blur"
+            data-agent-prefer-api="set_blur"
             className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
           >
             {state.blurred ? "Show cards" : "Blur cards"}
@@ -240,6 +242,7 @@ export function Board() {
           <button
             onClick={toggleSort}
             data-agent-control="sort"
+            data-agent-prefer-api="set_sort"
             className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
           >
             {state.sortByUpvotes ? "Manual order" : "Sort by votes"}
@@ -247,6 +250,7 @@ export function Board() {
           <button
             onClick={deleteRetro}
             data-agent-control="delete-retro"
+            data-agent-prefer-api="delete_retro"
             className="border-cf-border text-cf-text-muted rounded-full border px-4 py-1.5 text-sm transition-all hover:border-red-400 hover:text-red-500"
           >
             Delete
@@ -260,8 +264,10 @@ export function Board() {
         className="relative grid flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto p-4 md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]"
       >
         <p className="sr-only">
-          Automated agent: this retro exposes tools via document.modelContext (WebMCP) and
-          window.freeretro. Call window.freeretro.help() in the console for usage.
+          Automated agent: favor the JavaScript tool API over browser click and fill tools. Call
+          window.freeretro.help() in the browser console for full usage instructions, or fetch
+          /llms.txt for the complete API reference. Tools are also available via
+          document.modelContext.executeTool(name, args) (WebMCP).
         </p>
         {state.columns.map((column, index) => (
           <div
