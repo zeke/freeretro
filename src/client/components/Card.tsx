@@ -229,6 +229,7 @@ export function RetroCard({
           ) : (
             <p
               data-agent-control="content"
+              data-agent-prefer-api="edit_card"
               className={`text-cf-text text-sm whitespace-pre-wrap transition-[filter] ${
                 shouldBlur ? "cursor-default blur-sm select-none" : "cursor-text"
               }`}
@@ -249,6 +250,7 @@ export function RetroCard({
               <button
                 onClick={() => send({ type: "upvote:toggle", cardId: card.id })}
                 data-agent-control="upvote"
+                data-agent-prefer-api="upvote_card"
                 className={`rounded-full border px-2 py-0.5 text-xs transition-all ${
                   userUpvoted
                     ? "border-cf-orange text-cf-orange bg-orange-50"
@@ -262,6 +264,7 @@ export function RetroCard({
               <button
                 onClick={handleDelete}
                 data-agent-control="delete"
+                data-agent-prefer-api="delete_card"
                 className="text-cf-text-muted rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
               >
                 ✕
@@ -276,6 +279,7 @@ export function RetroCard({
                 key={emoji}
                 onClick={() => send({ type: "reaction:toggle", cardId: card.id, emoji })}
                 data-agent-control={`reaction-${emoji}`}
+                data-agent-prefer-api="react_to_card"
                 title={data.users.join(", ")}
                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all ${
                   data.userReacted

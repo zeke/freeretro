@@ -51,6 +51,7 @@ export function MoveCardMenu({ columns, currentColumnId, onMove }: MoveCardMenuP
         onClick={() => setIsOpen(!isOpen)}
         type="button"
         data-agent-control="move"
+        data-agent-prefer-api="move_card"
         title="Move to column"
         aria-label="Move card to another column"
         aria-haspopup="menu"
@@ -75,6 +76,7 @@ export function MoveCardMenu({ columns, currentColumnId, onMove }: MoveCardMenuP
                 type="button"
                 role="menuitem"
                 data-agent-control={`movecol-${column.id}`}
+                data-agent-prefer-api="move_card"
                 onClick={() => {
                   onMove(column.id);
                   setIsOpen(false);
