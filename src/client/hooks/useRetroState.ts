@@ -2,6 +2,7 @@ import { useEffect, useCallback, useReducer } from "react";
 import { DEFAULT_COLUMNS } from "../../types";
 import type {
   Card,
+  CardComment,
   Reaction,
   RetroUser,
   ServerMessage,
@@ -15,6 +16,7 @@ interface RetroState {
   columns: RetroColumn[];
   reactions: Reaction[];
   upvotes: Upvote[];
+  comments: CardComment[];
   users: RetroUser[];
   blurred: boolean;
   sortByUpvotes: boolean;
@@ -28,6 +30,7 @@ type RetroAction =
       columns: RetroColumn[];
       reactions: Reaction[];
       upvotes: Upvote[];
+      comments: CardComment[];
       users: RetroUser[];
       blurred: boolean;
       sortByUpvotes: boolean;
@@ -40,6 +43,7 @@ type RetroAction =
   | { type: "card:moved"; card: Card }
   | { type: "card:grouped"; cardId: string; groupId: string }
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
+  | { type: "comment:created"; comment: CardComment }
   | { type: "column:updated"; column: RetroColumn }
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }
@@ -54,6 +58,7 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
         columns: action.columns,
         reactions: action.reactions,
         upvotes: action.upvotes,
+        comments: action.comments,
         users: action.users,
         blurred: action.blurred,
         sortByUpvotes: action.sortByUpvotes,
@@ -88,6 +93,8 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
         ...state,
         cards: state.cards.filter((c) => c.id !== action.cardId && c.groupId !== action.cardId),
         reactions: state.reactions.filter((r) => r.cardId !== action.cardId),
+        upvotes: state.upvotes.filter((upvote) => upvote.cardId !== action.cardId),
+        comments: state.comments.filter((comment) => comment.cardId !== action.cardId),
       };
 
     case "card:moved":
@@ -138,6 +145,9 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
       return { ...state, upvotes: [...otherUpvotes, ...action.upvotes] };
     }
 
+    case "comment:created":
+      return { ...state, comments: [...state.comments, action.comment] };
+
     default:
       return state;
   }
@@ -148,6 +158,7 @@ const initialState: RetroState = {
   columns: DEFAULT_COLUMNS.map((column) => ({ ...column })),
   reactions: [],
   upvotes: [],
+  comments: [],
   users: [],
   blurred: true,
   sortByUpvotes: false,
@@ -167,6 +178,7 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
             columns: msg.columns,
             reactions: msg.reactions,
             upvotes: msg.upvotes,
+            comments: msg.comments,
             users: msg.users,
             blurred: msg.blurred,
             sortByUpvotes: msg.sortByUpvotes,
@@ -220,6 +232,9 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
             reactions: msg.reactions,
           });
           break;
+        case "comment:created":
+          dispatch({ type: "comment:created", comment: msg.comment });
+          break;
       }
     });
   }, [subscribe]);
@@ -263,11 +278,19 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
     [state.upvotes],
   );
 
+  const getCommentsForCard = useCallback(
+    (cardId: string) => {
+      return state.comments.filter((comment) => comment.cardId === cardId);
+    },
+    [state.comments],
+  );
+
   return {
     ...state,
     getCardsForColumn,
     getGroupedCards,
     getReactionsForCard,
     getUpvotesForCard,
+    getCommentsForCard,
   };
 }

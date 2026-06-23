@@ -56,9 +56,9 @@ export function MoveCardMenu({ columns, currentColumnId, onMove }: MoveCardMenuP
         aria-label="Move card to another column"
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        className="text-cf-text-muted hover:text-cf-orange rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+        className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-2 py-0.5 text-xs transition-all"
       >
-        ⇄
+        Move
       </button>
 
       {isOpen &&

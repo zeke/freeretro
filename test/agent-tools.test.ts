@@ -23,6 +23,7 @@ function snapshot(overrides: Partial<BoardSnapshot> = {}): BoardSnapshot {
     users: [],
     reactions: [],
     upvotes: [],
+    comments: [],
     blurred: false,
     sortByUpvotes: false,
     ...overrides,
@@ -111,6 +112,19 @@ describe("agent tools", () => {
     expect(sent).toEqual([{ type: "upvote:toggle", cardId: "a" }]);
   });
 
+  it("comment_card sends a trimmed comment:create after gliding to the comment button", async () => {
+    const { sent, embodiment, byName } = setup(snapshot());
+    const result = await byName("comment_card").execute({ cardId: "a", content: "  looks good  " });
+
+    expect(result.isError).toBeFalsy();
+    expect(embodiment.click).toHaveBeenCalledWith({
+      type: "card-control",
+      cardId: "a",
+      control: "comment",
+    });
+    expect(sent).toEqual([{ type: "comment:create", cardId: "a", content: "looks good" }]);
+  });
+
   it("list_cards reports upvote counts and reactions", async () => {
     const state = snapshot({
       cards: [
@@ -130,6 +144,16 @@ describe("agent tools", () => {
         { cardId: "a", emoji: "🚀", userName: "z" },
         { cardId: "a", emoji: "🚀", userName: "q" },
       ],
+      comments: [
+        {
+          id: "c1",
+          cardId: "a",
+          content: "Looks good",
+          author: "q",
+          authorId: "q",
+          createdAt: 2,
+        },
+      ],
     });
     const { byName } = setup(state);
     const result = await byName("list_cards").execute({});
@@ -144,6 +168,7 @@ describe("agent tools", () => {
         groupId: null,
         upvotes: 1,
         reactions: { "🚀": 2 },
+        comments: [{ id: "c1", content: "Looks good", author: "q", createdAt: 2 }],
       },
     ]);
   });

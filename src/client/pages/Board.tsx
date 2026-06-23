@@ -289,6 +289,7 @@ export function Board() {
               getGroupedCards={state.getGroupedCards}
               getReactionsForCard={state.getReactionsForCard}
               getUpvotesForCard={state.getUpvotesForCard}
+              getCommentsForCard={state.getCommentsForCard}
               send={send}
               userName={name}
               userId={userId}

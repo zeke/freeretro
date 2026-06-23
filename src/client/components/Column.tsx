@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import type {
   Card as CardType,
+  CardComment,
   Reaction,
   Upvote,
   ColumnId,
@@ -19,6 +20,7 @@ interface ColumnProps {
   getGroupedCards: (groupId: string) => CardType[];
   getReactionsForCard: (cardId: string) => Reaction[];
   getUpvotesForCard: (cardId: string) => Upvote[];
+  getCommentsForCard: (cardId: string) => CardComment[];
   send: (msg: ClientMessage) => void;
   userName: string;
   userId: string;
@@ -35,6 +37,7 @@ export function Column({
   getGroupedCards,
   getReactionsForCard,
   getUpvotesForCard,
+  getCommentsForCard,
   send,
   userName,
   userId,
@@ -155,6 +158,7 @@ export function Column({
             groupedCards={getGroupedCards(card.id)}
             reactions={getReactionsForCard(card.id)}
             upvotes={getUpvotesForCard(card.id)}
+            comments={getCommentsForCard(card.id)}
             send={send}
             userName={userName}
             userId={userId}

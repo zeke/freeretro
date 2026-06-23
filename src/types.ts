@@ -38,6 +38,15 @@ export interface Upvote {
   userId: string;
 }
 
+export interface CardComment {
+  id: string;
+  cardId: string;
+  content: string;
+  author: string;
+  authorId: string | null;
+  createdAt: number;
+}
+
 export interface RetroUser {
   id: string;
   name: string;
@@ -76,6 +85,7 @@ export type ClientMessage =
   | { type: "card:move"; cardId: string; columnId: ColumnId; position: number }
   | { type: "card:group"; cardId: string; targetCardId: string }
   | { type: "card:ungroup"; cardId: string }
+  | { type: "comment:create"; cardId: string; content: string }
   | { type: "column:update"; columnId: ColumnId; label: string }
   | { type: "blur:set"; blurred: boolean }
   | { type: "sort:set"; sortByUpvotes: boolean }
@@ -90,6 +100,7 @@ export type ServerMessage =
       columns: RetroColumn[];
       reactions: Reaction[];
       upvotes: Upvote[];
+      comments: CardComment[];
       users: RetroUser[];
       blurred: boolean;
       sortByUpvotes: boolean;
@@ -122,6 +133,7 @@ export type ServerMessage =
   | { type: "card:moved"; card: Card }
   | { type: "card:grouped"; cardId: string; groupId: string }
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
+  | { type: "comment:created"; comment: CardComment }
   | { type: "column:updated"; column: RetroColumn }
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }

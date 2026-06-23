@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import {
   draggable,
   dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import type {
   Card as CardType,
+  CardComment,
   Reaction,
   Upvote,
   ClientMessage,
@@ -22,6 +24,7 @@ interface RetroCardProps {
   groupedCards: CardType[];
   reactions: Reaction[];
   upvotes: Upvote[];
+  comments: CardComment[];
   send: (msg: ClientMessage) => void;
   userName: string;
   userId: string;
@@ -37,6 +40,7 @@ export function RetroCard({
   groupedCards,
   reactions,
   upvotes,
+  comments,
   send,
   userName,
   userId,
@@ -50,6 +54,8 @@ export function RetroCard({
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(card.content);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentDraft, setCommentDraft] = useState("");
   const isOwnCard = card.authorId === userId || (!card.authorId && card.author === userName);
   const shouldBlur = blurred && !isOwnCard;
   const userUpvoted = upvotes.some((upvote) => upvote.userId === userId);
@@ -144,6 +150,10 @@ export function RetroCard({
   };
 
   const handleDelete = () => {
+    const confirmed = window.confirm(
+      "Delete this card? This removes its reactions, upvotes, and comments.",
+    );
+    if (!confirmed) return;
     send({ type: "card:delete", cardId: card.id });
   };
 
@@ -155,6 +165,15 @@ export function RetroCard({
     const lastCard = cardsInColumn[cardsInColumn.length - 1];
     const position = lastCard ? lastCard.position + 1 : 1;
     send({ type: "card:move", cardId: card.id, columnId: targetColumnId, position });
+  };
+
+  const handleCreateComment = (event: FormEvent) => {
+    event.preventDefault();
+    const content = commentDraft.trim();
+    if (!content) return;
+    send({ type: "comment:create", cardId: card.id, content });
+    setCommentDraft("");
+    setCommentsOpen(true);
   };
 
   // Aggregate reactions by emoji
@@ -189,20 +208,16 @@ export function RetroCard({
         <div className="border-cf-border bg-cf-bg-page absolute -bottom-1 -left-1 h-2 w-2 rounded-[1.5px] border" />
         <div className="border-cf-border bg-cf-bg-page absolute -right-1 -bottom-1 h-2 w-2 rounded-[1.5px] border" />
 
-        {/* Drag handle */}
-        <div
-          ref={dragHandleRef}
-          className="absolute top-1 left-1 cursor-grab p-1 opacity-0 transition-opacity group-hover:opacity-60 active:cursor-grabbing"
+        <button
+          type="button"
+          onClick={handleDelete}
+          data-agent-control="delete"
+          data-agent-prefer-api="delete_card"
+          className="text-cf-text-muted absolute top-1 right-1 rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
+          title="Delete card"
         >
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
-            <circle cx="2" cy="2" r="1.5" />
-            <circle cx="8" cy="2" r="1.5" />
-            <circle cx="2" cy="7" r="1.5" />
-            <circle cx="8" cy="7" r="1.5" />
-            <circle cx="2" cy="12" r="1.5" />
-            <circle cx="8" cy="12" r="1.5" />
-          </svg>
-        </div>
+          x
+        </button>
 
         <div className="p-3 pt-4">
           {isEditing ? (
@@ -243,37 +258,104 @@ export function RetroCard({
             </p>
           )}
 
-          {/* Author and actions */}
-          <div className="mt-2 flex items-center justify-between">
+          <div className="mt-2">
             <span className="text-cf-text-muted text-xs">{card.author}</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => send({ type: "upvote:toggle", cardId: card.id })}
-                data-agent-control="upvote"
-                data-agent-prefer-api="upvote_card"
-                className={`rounded-full border px-2 py-0.5 text-xs transition-all ${
-                  userUpvoted
-                    ? "border-cf-orange text-cf-orange bg-orange-50"
-                    : "border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange"
-                }`}
-                title="Upvote"
-              >
-                ↑ {upvotes.length}
-              </button>
-              <MoveCardMenu columns={columns} currentColumnId={card.columnId} onMove={handleMove} />
-              <button
-                onClick={handleDelete}
-                data-agent-control="delete"
-                data-agent-prefer-api="delete_card"
-                className="text-cf-text-muted rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
-              >
-                ✕
-              </button>
-            </div>
           </div>
 
-          {/* Reactions */}
-          <div className="mt-2 flex flex-wrap gap-1">
+          {commentsOpen && (
+            <div className="border-cf-border mt-3 border-t pt-3">
+              {comments.length > 0 && (
+                <div className="mb-2 space-y-2">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="text-xs">
+                      <div className="text-cf-text-muted mb-0.5 flex items-center justify-between gap-2">
+                        <span>{comment.author}</span>
+                        <span>
+                          {new Date(comment.createdAt).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-cf-text whitespace-pre-wrap">{comment.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <form onSubmit={handleCreateComment} className="flex flex-col gap-2">
+                <textarea
+                  value={commentDraft}
+                  onChange={(event) => setCommentDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setCommentDraft("");
+                      setCommentsOpen(false);
+                    }
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  maxLength={500}
+                  rows={2}
+                  placeholder="Add a comment..."
+                  className="border-cf-border bg-cf-bg-page text-cf-text placeholder:text-cf-text-muted focus:border-cf-orange w-full resize-none rounded border p-2 text-xs outline-none"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-cf-text-muted text-[11px]">{commentDraft.length}/500</span>
+                  <button
+                    type="submit"
+                    disabled={!commentDraft.trim()}
+                    className="bg-cf-orange rounded-full px-3 py-1 text-xs font-medium text-white transition-opacity disabled:opacity-40"
+                  >
+                    Add comment
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-1">
+            <div
+              ref={dragHandleRef}
+              className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange inline-flex cursor-grab items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all active:cursor-grabbing"
+              title="Drag card"
+              aria-label="Drag card"
+            >
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+                <circle cx="2" cy="2" r="1.5" />
+                <circle cx="8" cy="2" r="1.5" />
+                <circle cx="2" cy="7" r="1.5" />
+                <circle cx="8" cy="7" r="1.5" />
+                <circle cx="2" cy="12" r="1.5" />
+                <circle cx="8" cy="12" r="1.5" />
+              </svg>
+              <span>Drag</span>
+            </div>
+            <button
+              onClick={() => send({ type: "upvote:toggle", cardId: card.id })}
+              data-agent-control="upvote"
+              data-agent-prefer-api="upvote_card"
+              className={`rounded-full border px-2 py-0.5 text-xs transition-all ${
+                userUpvoted
+                  ? "border-cf-orange text-cf-orange bg-orange-50"
+                  : "border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange"
+              }`}
+              title="Upvote"
+            >
+              ↑ {upvotes.length}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCommentsOpen((open) => !open)}
+              data-agent-control="comment"
+              data-agent-prefer-api="comment_card"
+              className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-2 py-0.5 text-xs transition-all"
+              title="Comments"
+            >
+              {comments.length === 0 ? "Comment" : `Comments ${comments.length}`}
+            </button>
+            <MoveCardMenu columns={columns} currentColumnId={card.columnId} onMove={handleMove} />
             {Object.entries(reactionCounts).map(([emoji, data]) => (
               <button
                 key={emoji}
