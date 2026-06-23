@@ -78,7 +78,8 @@ jobs:
         run: |
           npx wrangler deploy --config dist/freeretro/wrangler.json --name "$WORKER_NAME"
           preview_url="https://$WORKER_NAME.ziki.workers.dev"
-          curl --fail --silent --show-error --retry 5 --retry-delay 2 "$preview_url" > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 \
+            "$preview_url/llms.txt" > /dev/null
           echo "url=$preview_url" >> "$GITHUB_OUTPUT"
 
       - name: Publish deployment status
