@@ -299,7 +299,7 @@ export function RetroCard({
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-4">
             <EmojiReaction
               onSelect={(emoji) => send({ type: "reaction:toggle", cardId: card.id, emoji })}
             />
