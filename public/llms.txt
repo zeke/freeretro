@@ -89,6 +89,7 @@ Once a retro board is open in a browser, the following are available:
 - upvote_card(cardId) - toggle your upvote
 - react_to_card(cardId, emoji) - toggle an emoji reaction
 - rename_column(columnId, label) - rename a column
+- rename_columns(labels) - rename multiple columns, where labels maps column IDs to labels
 - set_blur(blurred) - blur or reveal all cards for everyone
 - set_sort(sortByUpvotes) - sort by upvotes or restore manual order
 - set_cursor(x, y) - move your visible cursor to viewport coordinates

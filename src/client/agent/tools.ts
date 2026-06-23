@@ -254,6 +254,49 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
     },
     {
+      name: "rename_columns",
+      description: "Rename one or more columns in a single call.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          labels: {
+            type: "object",
+            description:
+              "Map of column IDs to new labels. Valid column IDs: highlights, challenges, questions, notes.",
+            additionalProperties: { type: "string" },
+          },
+        },
+        required: ["labels"],
+      },
+      execute: async ({ labels }) => {
+        if (!labels || typeof labels !== "object" || Array.isArray(labels)) {
+          return err("labels must be an object mapping column IDs to labels.");
+        }
+
+        const updates: { columnId: ColumnId; label: string }[] = [];
+        for (const [columnId, label] of Object.entries(labels)) {
+          if (!isColumnId(columnId)) return err(`Invalid columnId: ${columnId}`);
+          if (typeof label !== "string" || !label.trim()) {
+            return err(`label is required for ${columnId}.`);
+          }
+          updates.push({ columnId, label: label.trim() });
+        }
+
+        if (!updates.length) return err("At least one column label is required.");
+
+        for (const update of updates) {
+          await embodiment.click({
+            type: "column-control",
+            columnId: update.columnId,
+            control: "rename",
+          });
+          send({ type: "column:update", columnId: update.columnId, label: update.label });
+        }
+
+        return ok(`Renamed ${updates.length} column${updates.length === 1 ? "" : "s"}.`);
+      },
+    },
+    {
       name: "set_blur",
       description: "Blur or reveal all cards for everyone in the retro.",
       inputSchema: {

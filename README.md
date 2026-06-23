@@ -60,6 +60,7 @@ Write:
 - `upvote_card({ cardId })` — toggle your upvote on a card
 - `react_to_card({ cardId, emoji })` — toggle an emoji reaction on a card
 - `rename_column({ columnId, label })` — rename a column
+- `rename_columns({ labels })` — rename multiple columns, where `labels` maps column IDs to labels
 - `set_blur({ blurred })` — blur or reveal all cards for everyone
 - `set_sort({ sortByUpvotes })` — sort cards by upvotes or restore manual order
 

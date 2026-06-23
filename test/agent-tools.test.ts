@@ -111,6 +111,37 @@ describe("agent tools", () => {
     expect(sent).toEqual([{ type: "upvote:toggle", cardId: "a" }]);
   });
 
+  it("rename_columns sends a column:update for each label", async () => {
+    const { sent, embodiment, byName } = setup(snapshot());
+    const result = await byName("rename_columns").execute({
+      labels: { highlights: "  Wins  ", challenges: "Risks" },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(embodiment.click).toHaveBeenCalledWith({
+      type: "column-control",
+      columnId: "highlights",
+      control: "rename",
+    });
+    expect(embodiment.click).toHaveBeenCalledWith({
+      type: "column-control",
+      columnId: "challenges",
+      control: "rename",
+    });
+    expect(sent).toEqual([
+      { type: "column:update", columnId: "highlights", label: "Wins" },
+      { type: "column:update", columnId: "challenges", label: "Risks" },
+    ]);
+  });
+
+  it("rename_columns rejects invalid column IDs", async () => {
+    const { sent, byName } = setup(snapshot());
+    const result = await byName("rename_columns").execute({ labels: { nope: "Bad" } });
+
+    expect(result.isError).toBe(true);
+    expect(sent).toEqual([]);
+  });
+
   it("list_cards reports upvote counts and reactions", async () => {
     const state = snapshot({
       cards: [
