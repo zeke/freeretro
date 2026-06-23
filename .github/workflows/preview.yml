@@ -1,0 +1,170 @@
+name: Preview
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - closed
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Create deployment
+        id: deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENVIRONMENT: preview/pr-${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          deployment_id=$(gh api repos/${{ github.repository }}/deployments \
+            --method POST \
+            --input - \
+            --jq .id <<EOF
+          {
+            "ref": "$HEAD_SHA",
+            "environment": "$ENVIRONMENT",
+            "auto_merge": false,
+            "required_contexts": [],
+            "transient_environment": true,
+            "production_environment": false
+          }
+          EOF
+          )
+
+          gh api repos/${{ github.repository }}/deployments/$deployment_id/statuses \
+            --method POST \
+            -f state=in_progress \
+            -f log_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -F auto_inactive=false \
+            -f description="Deploying preview"
+
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy preview
+        id: preview
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WORKER_NAME: freeretro-pr-${{ github.event.pull_request.number }}
+        run: |
+          npx wrangler deploy --config dist/freeretro/wrangler.json --name "$WORKER_NAME"
+          preview_url="https://$WORKER_NAME.ziki.workers.dev"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 \
+            "$preview_url/llms.txt" > /dev/null
+          echo "url=$preview_url" >> "$GITHUB_OUTPUT"
+
+      - name: Publish deployment status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -z "$DEPLOYMENT_ID" ]; then
+            exit 0
+          fi
+
+          current_sha=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER --jq .head.sha)
+          state=failure
+          description="Preview deployment failed"
+          environment_url=""
+
+          if [ "${{ steps.preview.outcome }}" = "success" ]; then
+            if [ "$current_sha" = "$HEAD_SHA" ]; then
+              state=success
+              description="Preview deployment ready"
+              environment_url="$PREVIEW_URL"
+            else
+              state=inactive
+              description="Preview superseded by a newer commit"
+            fi
+          fi
+
+          args=(
+            repos/${{ github.repository }}/deployments/$DEPLOYMENT_ID/statuses
+            --method POST
+            -f state="$state"
+            -f log_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            -F auto_inactive=false
+            -f description="$description"
+          )
+
+          if [ -n "$environment_url" ]; then
+            args+=(-f environment_url="$environment_url")
+          fi
+
+          gh api "${args[@]}"
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Delete preview Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WORKER_NAME: freeretro-pr-${{ github.event.pull_request.number }}
+        run: npx wrangler delete "$WORKER_NAME" --force || true
+
+      - name: Mark preview deployments inactive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENVIRONMENT: preview/pr-${{ github.event.pull_request.number }}
+        run: |
+          gh api repos/${{ github.repository }}/deployments \
+            -f environment="$ENVIRONMENT" \
+            --jq '.[].id' | while read -r deployment_id; do
+              gh api repos/${{ github.repository }}/deployments/$deployment_id/statuses \
+                --method POST \
+                -f state=inactive \
+                -f log_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+                -F auto_inactive=false \
+                -f description="Preview deployment cleaned up"
+            done
