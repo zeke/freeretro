@@ -44,7 +44,7 @@ export function EmojiReaction({ onSelect }: EmojiReactionProps) {
         type="button"
         data-agent-control="react"
         aria-label="Add reaction"
-        className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange group/tooltip relative inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white/45 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-all hover:-translate-y-px hover:bg-white/80 hover:shadow-sm"
+        className="text-cf-text-muted hover:text-cf-orange group/tooltip focus-visible:text-cf-orange relative inline-flex h-8 w-8 items-center justify-center rounded-full text-sm transition-all hover:-translate-y-px hover:bg-orange-50 focus-visible:outline-none"
       >
         <span className="opacity-70 grayscale transition-opacity group-hover/tooltip:opacity-100">
           ☺

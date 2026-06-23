@@ -168,8 +168,8 @@ export function RetroCard({
   );
 
   const controlBase =
-    "border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange group/tooltip relative inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-full border bg-white/45 px-2 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-all hover:-translate-y-px hover:bg-white/80 hover:shadow-sm focus-visible:border-cf-orange focus-visible:text-cf-orange focus-visible:outline-none";
-  const activeControl = "border-cf-orange bg-orange-50 text-cf-orange";
+    "text-cf-text-muted hover:text-cf-orange group/tooltip relative inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-full px-2 text-xs transition-all hover:-translate-y-px hover:bg-orange-50 focus-visible:text-cf-orange focus-visible:outline-none";
+  const activeControl = "text-cf-orange";
 
   return (
     <div>
@@ -177,7 +177,7 @@ export function RetroCard({
         ref={cardRef}
         data-agent="card"
         data-card-id={card.id}
-        className={`group bg-cf-bg-hover relative border transition-all ${
+        className={`group relative border bg-white transition-all ${
           isDragging || remoteDragging ? "opacity-40" : ""
         } ${
           isDropTarget
@@ -190,18 +190,6 @@ export function RetroCard({
         <div className="border-cf-border bg-cf-bg-page absolute -top-1 -right-1 h-2 w-2 rounded-[1.5px] border" />
         <div className="border-cf-border bg-cf-bg-page absolute -bottom-1 -left-1 h-2 w-2 rounded-[1.5px] border" />
         <div className="border-cf-border bg-cf-bg-page absolute -right-1 -bottom-1 h-2 w-2 rounded-[1.5px] border" />
-
-        <button
-          type="button"
-          onClick={handleDelete}
-          data-agent-control="delete"
-          data-agent-prefer-api="delete_card"
-          aria-label="Delete card"
-          className="text-cf-text-muted group/delete absolute top-1 right-1 rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-none"
-        >
-          <CloseIcon />
-          <ControlTooltip>Delete card</ControlTooltip>
-        </button>
 
         <div className="p-3 pt-4">
           {isEditing ? (
@@ -350,6 +338,17 @@ export function RetroCard({
                 <ControlTooltip>{data.users.join(", ")}</ControlTooltip>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={handleDelete}
+              data-agent-control="delete"
+              data-agent-prefer-api="delete_card"
+              aria-label="Delete card"
+              className={`${controlBase} hover:bg-red-50 hover:text-red-500 focus-visible:text-red-500`}
+            >
+              <TrashIcon />
+              <ControlTooltip>Delete card</ControlTooltip>
+            </button>
           </div>
         </div>
       </div>
@@ -419,10 +418,23 @@ function DragIcon() {
   );
 }
 
-function CloseIcon() {
+function TrashIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5" fill="none">
-      <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M9 5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5.5 7h13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="m8 7 .6 11.5A1.6 1.6 0 0 0 10.2 20h3.6a1.6 1.6 0 0 0 1.6-1.5L16 7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.5 10v6M13.5 10v6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
