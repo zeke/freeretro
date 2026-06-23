@@ -43,9 +43,15 @@ export function EmojiReaction({ onSelect }: EmojiReactionProps) {
         onClick={() => setIsOpen(!isOpen)}
         type="button"
         data-agent-control="react"
-        className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange inline-flex items-center rounded-full border border-dashed px-2 py-0.5 text-xs transition-all"
+        aria-label="Add reaction"
+        className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange group/tooltip relative inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white/45 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-all hover:-translate-y-px hover:bg-white/80 hover:shadow-sm"
       >
-        +
+        <span className="opacity-70 grayscale transition-opacity group-hover/tooltip:opacity-100">
+          ☺
+        </span>
+        <span className="bg-cf-text pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 rounded px-2 py-1 text-[11px] whitespace-nowrap text-white opacity-0 shadow-sm transition-opacity group-hover/tooltip:opacity-100 group-focus-visible/tooltip:opacity-100">
+          Add reaction
+        </span>
       </button>
 
       {isOpen &&

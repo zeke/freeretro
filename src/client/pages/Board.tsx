@@ -284,7 +284,6 @@ export function Board() {
             <Column
               columnId={column.id}
               label={column.label}
-              columns={state.columns}
               cards={state.getCardsForColumn(column.id)}
               getGroupedCards={state.getGroupedCards}
               getReactionsForCard={state.getReactionsForCard}

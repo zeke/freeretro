@@ -7,7 +7,6 @@ import type {
   Upvote,
   ColumnId,
   ClientMessage,
-  RetroColumn,
 } from "../../types";
 import { RetroCard } from "./Card";
 import { CardForm } from "./CardForm";
@@ -15,7 +14,6 @@ import { CardForm } from "./CardForm";
 interface ColumnProps {
   columnId: ColumnId;
   label: string;
-  columns: RetroColumn[];
   cards: CardType[];
   getGroupedCards: (groupId: string) => CardType[];
   getReactionsForCard: (cardId: string) => Reaction[];
@@ -32,7 +30,6 @@ interface ColumnProps {
 export function Column({
   columnId,
   label,
-  columns,
   cards,
   getGroupedCards,
   getReactionsForCard,
@@ -154,7 +151,6 @@ export function Column({
             key={card.id}
             card={card}
             index={index}
-            columns={columns}
             groupedCards={getGroupedCards(card.id)}
             reactions={getReactionsForCard(card.id)}
             upvotes={getUpvotesForCard(card.id)}
