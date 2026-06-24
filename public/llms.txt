@@ -91,8 +91,42 @@ Once a retro board is open in a browser, the following are available:
 - rename_column(columnId, label) - rename a column
 - set_blur(blurred) - blur or reveal all cards for everyone
 - set_sort(sortByUpvotes) - sort by upvotes or restore manual order
+- set_name(name) - set your visible name and the author used for future cards/comments
 - set_cursor(x, y) - move your visible cursor to viewport coordinates
 - set_interaction_mode(mode) - "human" animates cursor so people can follow; "direct" applies changes instantly
+
+### Common workflows
+
+List columns:
+
+```js
+await window.freeretro.call("list_columns");
+```
+
+Create one card:
+
+```js
+await window.freeretro.call("create_card", {
+  columnId: "highlights",
+  content: "We shipped the launch on time.",
+});
+```
+
+Create multiple cards:
+
+```js
+for (const content of ["Fast reviews", "Clear ownership", "Good incident handoff"]) {
+  await window.freeretro.call("create_card", { columnId: "highlights", content });
+}
+```
+
+Verify changes:
+
+```js
+await window.freeretro.call("list_cards");
+```
+
+Mutation tools return JSON strings. For example, `create_card` returns `{ "card": { "id", "columnId", "content" } }`.
 
 ## Interaction modes
 

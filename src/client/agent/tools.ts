@@ -41,6 +41,10 @@ function json(value: unknown): ToolResult {
   return ok(JSON.stringify(value, null, 2));
 }
 
+function newId(): string {
+  return crypto.randomUUID();
+}
+
 function isColumnId(value: unknown): value is ColumnId {
   return typeof value === "string" && (COLUMNS as string[]).includes(value);
 }
@@ -136,9 +140,11 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ columnId, content }) => {
         if (!isColumnId(columnId)) return err(`Invalid columnId: ${String(columnId)}`);
         if (typeof content !== "string" || !content.trim()) return err("content is required.");
+        const id = newId();
+        const trimmed = content.trim();
         await embodiment.click({ type: "add-card", columnId });
-        send({ type: "card:create", columnId, content: content.trim() });
-        return ok(`Added a card to ${columnId}.`);
+        send({ type: "card:create", id, columnId, content: trimmed });
+        return json({ card: { id, columnId, content: trimmed } });
       },
     },
     {
@@ -155,9 +161,10 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ cardId, content }) => {
         if (typeof cardId !== "string") return err("cardId is required.");
         if (typeof content !== "string" || !content.trim()) return err("content is required.");
+        const trimmed = content.trim();
         await embodiment.click({ type: "card-control", cardId, control: "content" });
-        send({ type: "card:update", cardId, content: content.trim() });
-        return ok(`Updated card ${cardId}.`);
+        send({ type: "card:update", cardId, content: trimmed });
+        return json({ card: { id: cardId, content: trimmed } });
       },
     },
     {
@@ -172,7 +179,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
         if (typeof cardId !== "string") return err("cardId is required.");
         await embodiment.click({ type: "card-control", cardId, control: "delete" });
         send({ type: "card:delete", cardId });
-        return ok(`Deleted card ${cardId}.`);
+        return json({ deleted: { cardId } });
       },
     },
     {
@@ -196,7 +203,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
         await embodiment.drag({ type: "card", cardId }, { type: "column", columnId }, () => {
           send({ type: "card:move", cardId, columnId, position: resolved });
         });
-        return ok(`Moved card ${cardId} to ${columnId}.`);
+        return json({ card: { id: cardId, columnId, position: resolved } });
       },
     },
     {
@@ -211,7 +218,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
         if (typeof cardId !== "string") return err("cardId is required.");
         await embodiment.click({ type: "card-control", cardId, control: "upvote" });
         send({ type: "upvote:toggle", cardId });
-        return ok(`Toggled upvote on card ${cardId}.`);
+        return json({ cardId, upvoteToggled: true });
       },
     },
     {
@@ -228,9 +235,11 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ cardId, content }) => {
         if (typeof cardId !== "string") return err("cardId is required.");
         if (typeof content !== "string" || !content.trim()) return err("content is required.");
+        const id = newId();
+        const trimmed = content.trim();
         await embodiment.click({ type: "card-control", cardId, control: "comment" });
-        send({ type: "comment:create", cardId, content: content.trim() });
-        return ok(`Added a comment to card ${cardId}.`);
+        send({ type: "comment:create", id, cardId, content: trimmed });
+        return json({ comment: { id, cardId, content: trimmed } });
       },
     },
     {
@@ -247,9 +256,10 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ columnId, label }) => {
         if (!isColumnId(columnId)) return err(`Invalid columnId: ${String(columnId)}`);
         if (typeof label !== "string" || !label.trim()) return err("label is required.");
+        const trimmed = label.trim();
         await embodiment.click({ type: "column-control", columnId, control: "rename" });
-        send({ type: "column:update", columnId, label: label.trim() });
-        return ok(`Renamed ${columnId} to "${label.trim()}".`);
+        send({ type: "column:update", columnId, label: trimmed });
+        return json({ column: { id: columnId, label: trimmed } });
       },
     },
     {
@@ -262,7 +272,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
       execute: ({ blurred }) => {
         send({ type: "blur:set", blurred: Boolean(blurred) });
-        return ok(`Set blur to ${Boolean(blurred)}.`);
+        return json({ blurred: Boolean(blurred) });
       },
     },
     {
@@ -275,12 +285,13 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
       execute: ({ sortByUpvotes }) => {
         send({ type: "sort:set", sortByUpvotes: Boolean(sortByUpvotes) });
-        return ok(`Set sortByUpvotes to ${Boolean(sortByUpvotes)}.`);
+        return json({ sortByUpvotes: Boolean(sortByUpvotes) });
       },
     },
     {
       name: "set_name",
-      description: "Set the display name others see for you in the retro.",
+      description:
+        "Set the display name others see for you and the author used for future cards/comments.",
       inputSchema: {
         type: "object",
         properties: {
@@ -290,8 +301,10 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
       execute: ({ name }) => {
         if (typeof name !== "string" || !name.trim()) return err("name is required.");
-        setName(name.trim());
-        return ok(`Set name to "${name.trim()}".`);
+        const trimmed = name.trim();
+        setName(trimmed);
+        send({ type: "join", name: trimmed });
+        return json({ name: trimmed, appliesTo: "presence and future cards/comments" });
       },
     },
     {
@@ -309,7 +322,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: async ({ x, y }) => {
         if (typeof x !== "number" || typeof y !== "number") return err("x and y are required.");
         await embodiment.point(x, y);
-        return ok(`Moved cursor to (${x}, ${y}).`);
+        return json({ cursor: { x, y } });
       },
     },
     {
@@ -324,7 +337,7 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       execute: ({ mode }) => {
         if (mode !== "human" && mode !== "direct") return err('mode must be "human" or "direct".');
         embodiment.setMode(mode as InteractionMode);
-        return ok(`Interaction mode set to ${mode}.`);
+        return json({ mode });
       },
     },
   ];

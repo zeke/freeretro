@@ -50,6 +50,14 @@ interface UseAgentToolsOptions {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function compactSchema(schema: ToolMetadata["inputSchema"]): string {
+  if (!schema) return "{}";
+  return JSON.stringify(schema)
+    .replaceAll('"type":"object",', "")
+    .replaceAll('"properties":', "props:")
+    .replaceAll('"required":', "required:");
+}
+
 function buildHelp(tools: ToolMetadata[]): string {
   const lines = [
     "Free Retro agent API.",
@@ -65,8 +73,16 @@ function buildHelp(tools: ToolMetadata[]): string {
     "",
     "Your cursor is shared with everyone in the retro. Move it with set_cursor or window.freeretro.moveCursor(x, y).",
     "",
-    "Tools:",
-    ...tools.map((tool) => `  ${tool.name} - ${tool.description}`),
+    "Tools and argument schemas:",
+    ...tools.map(
+      (tool) => `  ${tool.name} ${compactSchema(tool.inputSchema)} - ${tool.description}`,
+    ),
+    "",
+    "Examples:",
+    "  await window.freeretro.call('list_columns')",
+    "  await window.freeretro.call('create_card', { columnId: 'highlights', content: 'Shipped the launch' })",
+    "  for (const content of ['Fast reviews', 'Clear scope']) await window.freeretro.call('create_card', { columnId: 'highlights', content })",
+    "  await window.freeretro.call('list_cards')",
   ];
   return lines.join("\n");
 }

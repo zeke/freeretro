@@ -73,13 +73,13 @@ export type ClientMessage =
   | { type: "click"; x: number; y: number; anchor?: CursorAnchor }
   | { type: "drag:start"; cardId: string }
   | { type: "drag:end" }
-  | { type: "card:create"; columnId: ColumnId; content: string }
+  | { type: "card:create"; columnId: ColumnId; content: string; id?: string }
   | { type: "card:update"; cardId: string; content: string }
   | { type: "card:delete"; cardId: string }
   | { type: "card:move"; cardId: string; columnId: ColumnId; position: number }
   | { type: "card:group"; cardId: string; targetCardId: string }
   | { type: "card:ungroup"; cardId: string }
-  | { type: "comment:create"; cardId: string; content: string }
+  | { type: "comment:create"; cardId: string; content: string; id?: string }
   | { type: "column:update"; columnId: ColumnId; label: string }
   | { type: "blur:set"; blurred: boolean }
   | { type: "sort:set"; sortByUpvotes: boolean }

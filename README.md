@@ -69,6 +69,10 @@ Identity, cursor, and mode:
 - `set_cursor({ x, y })` — move your shared cursor to viewport coordinates
 - `set_interaction_mode({ mode })` — `"human"` animates the cursor to each target; `"direct"` applies changes instantly
 
+Mutation tools return JSON strings with the affected object IDs where possible. For example, `create_card({ columnId, content })` returns `{ "card": { "id", "columnId", "content" } }`, so agents can verify without immediately calling `list_cards()`.
+
+`set_name({ name })` updates both your visible presence and the author used for future cards and comments. Existing cards keep their original author.
+
 Interaction modes: in `human` mode (the default for automated browsers, detected via `navigator.webdriver`) the agent's shared cursor glides to each target so people watching can follow along; `direct` applies changes instantly. Switch with `window.freeretro.setMode("human" | "direct")` or the `set_interaction_mode` tool.
 
 On WebMCP and discoverability: WebMCP is an experimental proposal in the W3C Web Machine Learning community group, not an official web standard, and no browser implements `document.modelContext` natively yet. Free Retro ships a small shim so the WebMCP surface works today, but none of this depends on WebMCP: the same tools are reachable through the plain `window.freeretro` global, and the console message plus the accessibility-tree note make them discoverable by any automated session using ordinary DOM and JavaScript. Agents can interact regardless of WebMCP's readiness or official status; native WebMCP support is a forward-looking bonus for harnesses that adopt it.
@@ -86,6 +90,26 @@ To put an agent to work on a retro, you'll need:
 Any automated browser works. [Browser Run](https://developers.cloudflare.com/browser-run/) is a convenient hosted option: headless Chrome you drive over CDP from a Worker or an agent harness, so an agent can open a retro and act on it without managing local browser infrastructure.
 
 Give the agent the URL, tell it what you want to add, and let it go to work!
+
+### Browser Run example
+
+Agents can also drive a public retro with Cloudflare Browser Run or any Chrome DevTools Protocol endpoint. Keep provider-specific credentials in your environment and pass only the retro URL into the browser session.
+
+```js
+const browserUrl = process.env.BROWSER_RUN_URL;
+const retroUrl = process.env.FREE_RETRO_URL;
+
+// Connect your CDP client to browserUrl, open retroUrl, then prefer the in-page API:
+await page.evaluate(async () => {
+  await window.freeretro.call("set_interaction_mode", { mode: "direct" });
+  await window.freeretro.call("create_card", {
+    columnId: "highlights",
+    content: "Agent-created card via Browser Run",
+  });
+});
+```
+
+Use your agent or browser automation tool's CDP client of choice. Do not put account IDs, API tokens, or personal Browser Run URLs in repo docs or source code.
 
 ## For coding agents
 
