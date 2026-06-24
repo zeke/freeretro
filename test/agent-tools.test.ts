@@ -47,10 +47,16 @@ describe("agent tools", () => {
   it("create_card sends a trimmed card:create after gliding to the add button", async () => {
     const { sent, embodiment, byName } = setup(snapshot());
     const result = await byName("create_card").execute({ columnId: "notes", content: "  hi  " });
+    const parsed = JSON.parse(result.content[0].text);
 
     expect(result.isError).toBeFalsy();
     expect(embodiment.click).toHaveBeenCalledWith({ type: "add-card", columnId: "notes" });
-    expect(sent).toEqual([{ type: "card:create", columnId: "notes", content: "hi" }]);
+    expect(parsed).toEqual({
+      card: { id: expect.any(String), columnId: "notes", content: "hi" },
+    });
+    expect(sent).toEqual([
+      { type: "card:create", id: parsed.card.id, columnId: "notes", content: "hi" },
+    ]);
   });
 
   it("create_card rejects an invalid column", async () => {
@@ -87,7 +93,8 @@ describe("agent tools", () => {
       ],
     });
     const { sent, embodiment, byName } = setup(state);
-    await byName("move_card").execute({ cardId: "b", columnId: "challenges" });
+    const result = await byName("move_card").execute({ cardId: "b", columnId: "challenges" });
+    const parsed = JSON.parse(result.content[0].text);
 
     expect(embodiment.drag).toHaveBeenCalledWith(
       { type: "card", cardId: "b" },
@@ -95,6 +102,7 @@ describe("agent tools", () => {
       expect.any(Function),
     );
     expect(sent).toEqual([{ type: "card:move", cardId: "b", columnId: "challenges", position: 8 }]);
+    expect(parsed).toEqual({ card: { id: "b", columnId: "challenges", position: 8 } });
   });
 
   it("move_card honors an explicit position", async () => {
@@ -106,14 +114,16 @@ describe("agent tools", () => {
 
   it("upvote_card toggles an upvote", async () => {
     const { sent, byName } = setup(snapshot());
-    await byName("upvote_card").execute({ cardId: "a" });
+    const result = await byName("upvote_card").execute({ cardId: "a" });
 
     expect(sent).toEqual([{ type: "upvote:toggle", cardId: "a" }]);
+    expect(JSON.parse(result.content[0].text)).toEqual({ cardId: "a", upvoteToggled: true });
   });
 
   it("comment_card sends a trimmed comment:create after gliding to the comment button", async () => {
     const { sent, embodiment, byName } = setup(snapshot());
     const result = await byName("comment_card").execute({ cardId: "a", content: "  looks good  " });
+    const parsed = JSON.parse(result.content[0].text);
 
     expect(result.isError).toBeFalsy();
     expect(embodiment.click).toHaveBeenCalledWith({
@@ -121,7 +131,12 @@ describe("agent tools", () => {
       cardId: "a",
       control: "comment",
     });
-    expect(sent).toEqual([{ type: "comment:create", cardId: "a", content: "looks good" }]);
+    expect(parsed).toEqual({
+      comment: { id: expect.any(String), cardId: "a", content: "looks good" },
+    });
+    expect(sent).toEqual([
+      { type: "comment:create", id: parsed.comment.id, cardId: "a", content: "looks good" },
+    ]);
   });
 
   it("list_cards reports upvote counts and comments", async () => {
@@ -175,11 +190,16 @@ describe("agent tools", () => {
   });
 
   it("set_name sets a trimmed name", async () => {
-    const { setName, byName } = setup(snapshot());
+    const { sent, setName, byName } = setup(snapshot());
     const result = await byName("set_name").execute({ name: "  Ada  " });
 
     expect(result.isError).toBeFalsy();
     expect(setName).toHaveBeenCalledWith("Ada");
+    expect(sent).toEqual([{ type: "join", name: "Ada" }]);
+    expect(JSON.parse(result.content[0].text)).toEqual({
+      name: "Ada",
+      appliesTo: "presence and future cards/comments",
+    });
   });
 
   it("set_name rejects an empty name", async () => {

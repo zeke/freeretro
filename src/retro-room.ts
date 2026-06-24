@@ -240,7 +240,7 @@ export class RetroRoom extends DurableObject<Env> {
         break;
 
       case "card:create":
-        this.handleCardCreate(ws, session, msg.columnId, msg.content);
+        this.handleCardCreate(ws, session, msg.columnId, msg.content, msg.id);
         break;
 
       case "card:update":
@@ -264,7 +264,7 @@ export class RetroRoom extends DurableObject<Env> {
         break;
 
       case "comment:create":
-        this.handleCommentCreate(session, msg.cardId, msg.content);
+        this.handleCommentCreate(session, msg.cardId, msg.content, msg.id);
         break;
 
       case "column:update":
@@ -309,11 +309,12 @@ export class RetroRoom extends DurableObject<Env> {
     session: SessionData,
     columnId: ColumnId,
     content: string,
+    requestedId?: string,
   ): void {
     if (!COLUMNS.includes(columnId)) return;
     if (!content.trim()) return;
 
-    const id = crypto.randomUUID();
+    const id = this.toUuidOrNew(requestedId);
     const position = this.getNextPosition(columnId);
     const createdAt = Date.now();
 
@@ -411,12 +412,17 @@ export class RetroRoom extends DurableObject<Env> {
     this.broadcast({ type: "card:ungrouped", cardId, columnId: card.columnId, position });
   }
 
-  private handleCommentCreate(session: SessionData, cardId: string, content: string): void {
+  private handleCommentCreate(
+    session: SessionData,
+    cardId: string,
+    content: string,
+    requestedId?: string,
+  ): void {
     const trimmed = content.trim().slice(0, 500);
     if (!trimmed || !this.getCard(cardId)) return;
 
     const comment: CardComment = {
-      id: crypto.randomUUID(),
+      id: this.toUuidOrNew(requestedId),
       cardId,
       content: trimmed,
       author: session.name,
@@ -496,6 +502,13 @@ export class RetroRoom extends DurableObject<Env> {
   }
 
   // --- Helpers ---
+
+  private toUuidOrNew(value: string | undefined): string {
+    if (value?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)) {
+      return value;
+    }
+    return crypto.randomUUID();
+  }
 
   private getColumn(id: ColumnId): RetroColumn | null {
     const row = [
