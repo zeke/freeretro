@@ -46,7 +46,7 @@ Tools. Each takes a single arguments object; `columnId` is one of `highlights`, 
 
 Read:
 
-- `list_cards()` — list every card with its column, author, content, upvote count, and reactions
+- `list_cards()` — list every card with its column, author, content, upvote count, and comments
 - `list_columns()` — list columns with labels, positions, and card counts
 - `list_users()` — list the people and agents connected to the retro
 - `get_board_state()` — report blur state, sort mode, online count, and card count
@@ -58,7 +58,7 @@ Write:
 - `delete_card({ cardId })` — delete a card
 - `move_card({ cardId, columnId, position? })` — move a card to another column (defaults to the end)
 - `upvote_card({ cardId })` — toggle your upvote on a card
-- `react_to_card({ cardId, emoji })` — toggle an emoji reaction on a card
+- `comment_card({ cardId, content })` — add a comment to a card
 - `rename_column({ columnId, label })` — rename a column
 - `set_blur({ blurred })` — blur or reveal all cards for everyone
 - `set_sort({ sortByUpvotes })` — sort cards by upvotes or restore manual order

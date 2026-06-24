@@ -2,8 +2,8 @@ import { DurableObject } from "cloudflare:workers";
 import type { Env } from "./env.d";
 import type {
   Card,
+  CardComment,
   ClientMessage,
-  Reaction,
   RetroUser,
   ServerMessage,
   ColumnId,
@@ -40,19 +40,21 @@ export class RetroRoom extends DurableObject<Env> {
       `);
 
       this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS reactions (
-          card_id TEXT NOT NULL,
-          emoji TEXT NOT NULL,
-          user_name TEXT NOT NULL,
-          PRIMARY KEY (card_id, emoji, user_name)
-        )
-      `);
-
-      this.ctx.storage.sql.exec(`
         CREATE TABLE IF NOT EXISTS upvotes (
           card_id TEXT NOT NULL,
           user_id TEXT NOT NULL,
           PRIMARY KEY (card_id, user_id)
+        )
+      `);
+
+      this.ctx.storage.sql.exec(`
+        CREATE TABLE IF NOT EXISTS card_comments (
+          id TEXT PRIMARY KEY,
+          card_id TEXT NOT NULL,
+          content TEXT NOT NULL,
+          author TEXT NOT NULL,
+          author_id TEXT,
+          created_at INTEGER NOT NULL
         )
       `);
 
@@ -261,6 +263,10 @@ export class RetroRoom extends DurableObject<Env> {
         this.handleCardUngroup(msg.cardId);
         break;
 
+      case "comment:create":
+        this.handleCommentCreate(session, msg.cardId, msg.content);
+        break;
+
       case "column:update":
         this.handleColumnUpdate(msg.columnId, msg.label);
         break;
@@ -275,10 +281,6 @@ export class RetroRoom extends DurableObject<Env> {
 
       case "upvote:toggle":
         this.handleUpvoteToggle(msg.cardId, session.id);
-        break;
-
-      case "reaction:toggle":
-        this.handleReactionToggle(msg.cardId, msg.emoji, session.name);
         break;
     }
   }
@@ -354,8 +356,8 @@ export class RetroRoom extends DurableObject<Env> {
   private handleCardDelete(cardId: string): void {
     // Also ungroup any cards grouped under this one
     this.ctx.storage.sql.exec("UPDATE cards SET group_id = NULL WHERE group_id = ?", cardId);
-    this.ctx.storage.sql.exec("DELETE FROM reactions WHERE card_id = ?", cardId);
     this.ctx.storage.sql.exec("DELETE FROM upvotes WHERE card_id = ?", cardId);
+    this.ctx.storage.sql.exec("DELETE FROM card_comments WHERE card_id = ?", cardId);
     this.ctx.storage.sql.exec("DELETE FROM cards WHERE id = ?", cardId);
     this.broadcast({ type: "card:deleted", cardId });
   }
@@ -409,35 +411,30 @@ export class RetroRoom extends DurableObject<Env> {
     this.broadcast({ type: "card:ungrouped", cardId, columnId: card.columnId, position });
   }
 
-  private handleReactionToggle(cardId: string, emoji: string, userName: string): void {
-    // Check if this user already reacted with this emoji
-    const existing = [
-      ...this.ctx.storage.sql.exec<{ card_id: string }>(
-        "SELECT card_id FROM reactions WHERE card_id = ? AND emoji = ? AND user_name = ?",
-        cardId,
-        emoji,
-        userName,
-      ),
-    ];
+  private handleCommentCreate(session: SessionData, cardId: string, content: string): void {
+    const trimmed = content.trim().slice(0, 500);
+    if (!trimmed || !this.getCard(cardId)) return;
 
-    if (existing.length > 0) {
-      this.ctx.storage.sql.exec(
-        "DELETE FROM reactions WHERE card_id = ? AND emoji = ? AND user_name = ?",
-        cardId,
-        emoji,
-        userName,
-      );
-    } else {
-      this.ctx.storage.sql.exec(
-        "INSERT INTO reactions (card_id, emoji, user_name) VALUES (?, ?, ?)",
-        cardId,
-        emoji,
-        userName,
-      );
-    }
+    const comment: CardComment = {
+      id: crypto.randomUUID(),
+      cardId,
+      content: trimmed,
+      author: session.name,
+      authorId: session.id,
+      createdAt: Date.now(),
+    };
 
-    const reactions = this.getReactionsForCard(cardId);
-    this.broadcast({ type: "reaction:toggled", cardId, emoji, userName, reactions });
+    this.ctx.storage.sql.exec(
+      "INSERT INTO card_comments (id, card_id, content, author, author_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      comment.id,
+      comment.cardId,
+      comment.content,
+      comment.author,
+      comment.authorId,
+      comment.createdAt,
+    );
+
+    this.broadcast({ type: "comment:created", comment });
   }
 
   private handleColumnUpdate(columnId: ColumnId, label: string): void {
@@ -576,20 +573,6 @@ export class RetroRoom extends DurableObject<Env> {
     }));
   }
 
-  private getAllReactions(): Reaction[] {
-    const rows = this.ctx.storage.sql.exec<{
-      card_id: string;
-      emoji: string;
-      user_name: string;
-    }>("SELECT * FROM reactions");
-
-    return [...rows].map((row) => ({
-      cardId: row.card_id,
-      emoji: row.emoji,
-      userName: row.user_name,
-    }));
-  }
-
   private getAllUpvotes(): Upvote[] {
     const rows = this.ctx.storage.sql.exec<{ card_id: string; user_id: string }>(
       "SELECT * FROM upvotes",
@@ -598,6 +581,26 @@ export class RetroRoom extends DurableObject<Env> {
     return [...rows].map((row) => ({
       cardId: row.card_id,
       userId: row.user_id,
+    }));
+  }
+
+  private getAllComments(): CardComment[] {
+    const rows = this.ctx.storage.sql.exec<{
+      id: string;
+      card_id: string;
+      content: string;
+      author: string;
+      author_id: string | null;
+      created_at: number;
+    }>("SELECT * FROM card_comments ORDER BY created_at ASC");
+
+    return [...rows].map((row) => ({
+      id: row.id,
+      cardId: row.card_id,
+      content: row.content,
+      author: row.author,
+      authorId: row.author_id,
+      createdAt: row.created_at,
     }));
   }
 
@@ -610,20 +613,6 @@ export class RetroRoom extends DurableObject<Env> {
     return [...rows].map((row) => ({
       cardId: row.card_id,
       userId: row.user_id,
-    }));
-  }
-
-  private getReactionsForCard(cardId: string): Reaction[] {
-    const rows = this.ctx.storage.sql.exec<{
-      card_id: string;
-      emoji: string;
-      user_name: string;
-    }>("SELECT * FROM reactions WHERE card_id = ?", cardId);
-
-    return [...rows].map((row) => ({
-      cardId: row.card_id,
-      emoji: row.emoji,
-      userName: row.user_name,
     }));
   }
 
@@ -661,15 +650,24 @@ export class RetroRoom extends DurableObject<Env> {
   private getFullState(): ServerMessage {
     const columns = this.getColumns();
     const cards = this.getAllCards();
-    const reactions = this.getAllReactions();
     const upvotes = this.getAllUpvotes();
+    const comments = this.getAllComments();
     const blurred = this.getBlurred();
     const sortByUpvotes = this.getSortByUpvotes();
     const users: RetroUser[] = [];
     for (const session of this.sessions.values()) {
       users.push({ id: session.id, name: session.name, color: session.color });
     }
-    return { type: "state", cards, columns, reactions, upvotes, users, blurred, sortByUpvotes };
+    return {
+      type: "state",
+      cards,
+      columns,
+      upvotes,
+      comments,
+      users,
+      blurred,
+      sortByUpvotes,
+    };
   }
 
   private broadcast(message: ServerMessage, exclude?: WebSocket): void {

@@ -1,27 +1,19 @@
 import { useRef, useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import {
   draggable,
   dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import type {
-  Card as CardType,
-  Reaction,
-  Upvote,
-  ClientMessage,
-  ColumnId,
-  RetroColumn,
-} from "../../types";
-import { EmojiReaction } from "./EmojiReaction";
-import { MoveCardMenu } from "./MoveCardMenu";
+import type { Card as CardType, CardComment, Upvote, ClientMessage } from "../../types";
 import { CardGroup } from "./CardGroup";
+import { MarkdownContent } from "./MarkdownContent";
 
 interface RetroCardProps {
   card: CardType;
   index: number;
-  columns: RetroColumn[];
   groupedCards: CardType[];
-  reactions: Reaction[];
   upvotes: Upvote[];
+  comments: CardComment[];
   send: (msg: ClientMessage) => void;
   userName: string;
   userId: string;
@@ -33,10 +25,9 @@ interface RetroCardProps {
 export function RetroCard({
   card,
   index,
-  columns,
   groupedCards,
-  reactions,
   upvotes,
+  comments,
   send,
   userName,
   userId,
@@ -45,11 +36,13 @@ export function RetroCard({
   remoteDragging = false,
 }: RetroCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const dragHandleRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLButtonElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(card.content);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentDraft, setCommentDraft] = useState("");
   const isOwnCard = card.authorId === userId || (!card.authorId && card.author === userName);
   const shouldBlur = blurred && !isOwnCard;
   const userUpvoted = upvotes.some((upvote) => upvote.userId === userId);
@@ -144,30 +137,23 @@ export function RetroCard({
   };
 
   const handleDelete = () => {
+    const confirmed = window.confirm("Delete this card? This removes its upvotes and comments.");
+    if (!confirmed) return;
     send({ type: "card:delete", cardId: card.id });
   };
 
-  const handleMove = (targetColumnId: ColumnId) => {
-    if (targetColumnId === card.columnId) return;
-    const cardsInColumn = allCards
-      .filter((c) => c.columnId === targetColumnId && c.groupId === null)
-      .sort((a, b) => a.position - b.position);
-    const lastCard = cardsInColumn[cardsInColumn.length - 1];
-    const position = lastCard ? lastCard.position + 1 : 1;
-    send({ type: "card:move", cardId: card.id, columnId: targetColumnId, position });
+  const handleCreateComment = (event: FormEvent) => {
+    event.preventDefault();
+    const content = commentDraft.trim();
+    if (!content) return;
+    send({ type: "comment:create", cardId: card.id, content });
+    setCommentDraft("");
+    setCommentsOpen(true);
   };
 
-  // Aggregate reactions by emoji
-  const reactionCounts = reactions.reduce(
-    (acc, r) => {
-      if (!acc[r.emoji]) acc[r.emoji] = { count: 0, users: [], userReacted: false };
-      acc[r.emoji].count++;
-      acc[r.emoji].users.push(r.userName);
-      if (r.userName === userName) acc[r.emoji].userReacted = true;
-      return acc;
-    },
-    {} as Record<string, { count: number; users: string[]; userReacted: boolean }>,
-  );
+  const controlBase =
+    "text-cf-text-muted hover:text-cf-orange group/tooltip relative inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-full px-2 text-sm transition-all hover:-translate-y-px hover:bg-orange-50 focus-visible:text-cf-orange focus-visible:outline-none";
+  const activeControl = "text-cf-orange";
 
   return (
     <div>
@@ -175,7 +161,7 @@ export function RetroCard({
         ref={cardRef}
         data-agent="card"
         data-card-id={card.id}
-        className={`group bg-cf-bg-hover relative border transition-all ${
+        className={`group relative border bg-white transition-all ${
           isDragging || remoteDragging ? "opacity-40" : ""
         } ${
           isDropTarget
@@ -188,21 +174,6 @@ export function RetroCard({
         <div className="border-cf-border bg-cf-bg-page absolute -top-1 -right-1 h-2 w-2 rounded-[1.5px] border" />
         <div className="border-cf-border bg-cf-bg-page absolute -bottom-1 -left-1 h-2 w-2 rounded-[1.5px] border" />
         <div className="border-cf-border bg-cf-bg-page absolute -right-1 -bottom-1 h-2 w-2 rounded-[1.5px] border" />
-
-        {/* Drag handle */}
-        <div
-          ref={dragHandleRef}
-          className="absolute top-1 left-1 cursor-grab p-1 opacity-0 transition-opacity group-hover:opacity-60 active:cursor-grabbing"
-        >
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
-            <circle cx="2" cy="2" r="1.5" />
-            <circle cx="8" cy="2" r="1.5" />
-            <circle cx="2" cy="7" r="1.5" />
-            <circle cx="8" cy="7" r="1.5" />
-            <circle cx="2" cy="12" r="1.5" />
-            <circle cx="8" cy="12" r="1.5" />
-          </svg>
-        </div>
 
         <div className="p-3 pt-4">
           {isEditing ? (
@@ -227,10 +198,10 @@ export function RetroCard({
               />
             </div>
           ) : (
-            <p
+            <div
               data-agent-control="content"
               data-agent-prefer-api="edit_card"
-              className={`text-cf-text text-sm whitespace-pre-wrap transition-[filter] ${
+              className={`text-cf-text cursor-text text-sm transition-[filter] ${
                 shouldBlur ? "cursor-default blur-sm select-none" : "cursor-text"
               }`}
               onClick={() => {
@@ -239,61 +210,109 @@ export function RetroCard({
                 setIsEditing(true);
               }}
             >
-              {card.content}
-            </p>
+              <div className="text-cf-text-muted mb-1 text-xs">{card.author}</div>
+              <MarkdownContent content={card.content} />
+            </div>
           )}
 
-          {/* Author and actions */}
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-cf-text-muted text-xs">{card.author}</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => send({ type: "upvote:toggle", cardId: card.id })}
-                data-agent-control="upvote"
-                data-agent-prefer-api="upvote_card"
-                className={`rounded-full border px-2 py-0.5 text-xs transition-all ${
-                  userUpvoted
-                    ? "border-cf-orange text-cf-orange bg-orange-50"
-                    : "border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange"
-                }`}
-                title="Upvote"
-              >
-                ↑ {upvotes.length}
-              </button>
-              <MoveCardMenu columns={columns} currentColumnId={card.columnId} onMove={handleMove} />
-              <button
-                onClick={handleDelete}
-                data-agent-control="delete"
-                data-agent-prefer-api="delete_card"
-                className="text-cf-text-muted rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
-              >
-                ✕
-              </button>
+          {commentsOpen && (
+            <div className="border-cf-border mt-3 ml-4 border-l-2 pl-3">
+              {comments.length > 0 && (
+                <div className="mb-3 space-y-3">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="text-sm">
+                      <div className="text-cf-text-muted mb-1 flex items-center justify-between gap-2 text-xs">
+                        <span>{comment.author}</span>
+                        <span>
+                          {new Date(comment.createdAt).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <MarkdownContent content={comment.content} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <form onSubmit={handleCreateComment} className="flex flex-col gap-2">
+                <textarea
+                  value={commentDraft}
+                  onChange={(event) => setCommentDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setCommentDraft("");
+                      setCommentsOpen(false);
+                    }
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  maxLength={500}
+                  rows={2}
+                  placeholder="Add a comment..."
+                  className="border-cf-border bg-cf-bg-page text-cf-text placeholder:text-cf-text-muted focus:border-cf-orange w-full resize-none rounded border p-2 text-xs outline-none"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-cf-text-muted text-[11px]">{commentDraft.length}/500</span>
+                  <button
+                    type="submit"
+                    disabled={!commentDraft.trim()}
+                    className="bg-cf-orange rounded-full px-3 py-1 text-xs font-medium text-white transition-opacity disabled:opacity-40"
+                  >
+                    Add comment
+                  </button>
+                </div>
+              </form>
             </div>
-          </div>
+          )}
 
-          {/* Reactions */}
-          <div className="mt-2 flex flex-wrap gap-1">
-            {Object.entries(reactionCounts).map(([emoji, data]) => (
-              <button
-                key={emoji}
-                onClick={() => send({ type: "reaction:toggle", cardId: card.id, emoji })}
-                data-agent-control={`reaction-${emoji}`}
-                data-agent-prefer-api="react_to_card"
-                title={data.users.join(", ")}
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all ${
-                  data.userReacted
-                    ? "border-cf-orange text-cf-orange bg-orange-50"
-                    : "border-cf-border text-cf-text-muted hover:border-cf-orange"
-                }`}
-              >
-                <span>{emoji}</span>
-                <span>{data.count}</span>
-              </button>
-            ))}
-            <EmojiReaction
-              onSelect={(emoji) => send({ type: "reaction:toggle", cardId: card.id, emoji })}
-            />
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-4">
+            <button
+              type="button"
+              onClick={() => send({ type: "upvote:toggle", cardId: card.id })}
+              data-agent-control="upvote"
+              data-agent-prefer-api="upvote_card"
+              aria-label={`Upvote card, ${upvotes.length} ${upvotes.length === 1 ? "vote" : "votes"}`}
+              className={`${controlBase} ${userUpvoted ? activeControl : ""}`}
+            >
+              <UpvoteIcon />
+              {upvotes.length > 0 && <span>{upvotes.length}</span>}
+              <ControlTooltip>Upvote</ControlTooltip>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCommentsOpen((open) => !open)}
+              data-agent-control="comment"
+              data-agent-prefer-api="comment_card"
+              aria-label={`${commentsOpen ? "Hide" : "Show"} comments, ${comments.length} total`}
+              className={`${controlBase} ${commentsOpen ? activeControl : ""}`}
+            >
+              <CommentIcon />
+              {comments.length > 0 && <span>{comments.length}</span>}
+              <ControlTooltip>{commentsOpen ? "Hide comments" : "Comments"}</ControlTooltip>
+            </button>
+            <button
+              type="button"
+              ref={dragHandleRef}
+              className={`${controlBase} cursor-grab px-2 active:cursor-grabbing`}
+              aria-label="Drag card"
+            >
+              <DragIcon />
+              <ControlTooltip>Drag card</ControlTooltip>
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              data-agent-control="delete"
+              data-agent-prefer-api="delete_card"
+              aria-label="Delete card"
+              className={`${controlBase} hover:bg-red-50 hover:text-red-500 focus-visible:text-red-500`}
+            >
+              <TrashIcon />
+              <ControlTooltip>Delete card</ControlTooltip>
+            </button>
           </div>
         </div>
       </div>
@@ -307,9 +326,76 @@ export function RetroCard({
           userName={userName}
           userId={userId}
           blurred={blurred}
-          getReactionsForCard={() => []}
         />
       )}
     </div>
+  );
+}
+
+function ControlTooltip({ children }: { children: string }) {
+  return (
+    <span className="bg-cf-text pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 rounded px-2 py-1 text-[11px] whitespace-nowrap text-white opacity-0 shadow-sm transition-opacity group-hover/delete:opacity-100 group-hover/tooltip:opacity-100 group-focus-visible/delete:opacity-100 group-focus-visible/tooltip:opacity-100">
+      {children}
+    </span>
+  );
+}
+
+function UpvoteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
+      <path
+        d="M7.5 20H5.8a1.8 1.8 0 0 1-1.8-1.8v-6.4A1.8 1.8 0 0 1 5.8 10h1.7m0 10V9.5l3.6-5.1c.6-.8 1.9-.5 2 .5l.3 3.1h4.1a2.5 2.5 0 0 1 2.4 3.1l-1.4 5.6A4.4 4.4 0 0 1 14.2 20H7.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
+      <path
+        d="M6 6.5h12a2 2 0 0 1 2 2v6.25a2 2 0 0 1-2 2h-5.5L8 20v-3.25H6a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function DragIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+      <circle cx="8" cy="6" r="1.6" />
+      <circle cx="16" cy="6" r="1.6" />
+      <circle cx="8" cy="12" r="1.6" />
+      <circle cx="16" cy="12" r="1.6" />
+      <circle cx="8" cy="18" r="1.6" />
+      <circle cx="16" cy="18" r="1.6" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
+      <path d="M9 5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5.5 7h13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="m8 7 .6 11.5A1.6 1.6 0 0 0 10.2 20h3.6a1.6 1.6 0 0 0 1.6-1.5L16 7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.5 10v6M13.5 10v6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
