@@ -4,7 +4,6 @@ import type {
   Card,
   CardComment,
   ClientMessage,
-  Reaction,
   RetroUser,
   ServerMessage,
   ColumnId,
@@ -37,15 +36,6 @@ export class RetroRoom extends DurableObject<Env> {
           group_id TEXT,
           position REAL NOT NULL,
           created_at INTEGER NOT NULL
-        )
-      `);
-
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS reactions (
-          card_id TEXT NOT NULL,
-          emoji TEXT NOT NULL,
-          user_name TEXT NOT NULL,
-          PRIMARY KEY (card_id, emoji, user_name)
         )
       `);
 
@@ -292,10 +282,6 @@ export class RetroRoom extends DurableObject<Env> {
       case "upvote:toggle":
         this.handleUpvoteToggle(msg.cardId, session.id);
         break;
-
-      case "reaction:toggle":
-        this.handleReactionToggle(msg.cardId, msg.emoji, session.name);
-        break;
     }
   }
 
@@ -370,7 +356,6 @@ export class RetroRoom extends DurableObject<Env> {
   private handleCardDelete(cardId: string): void {
     // Also ungroup any cards grouped under this one
     this.ctx.storage.sql.exec("UPDATE cards SET group_id = NULL WHERE group_id = ?", cardId);
-    this.ctx.storage.sql.exec("DELETE FROM reactions WHERE card_id = ?", cardId);
     this.ctx.storage.sql.exec("DELETE FROM upvotes WHERE card_id = ?", cardId);
     this.ctx.storage.sql.exec("DELETE FROM card_comments WHERE card_id = ?", cardId);
     this.ctx.storage.sql.exec("DELETE FROM cards WHERE id = ?", cardId);
@@ -424,37 +409,6 @@ export class RetroRoom extends DurableObject<Env> {
     );
 
     this.broadcast({ type: "card:ungrouped", cardId, columnId: card.columnId, position });
-  }
-
-  private handleReactionToggle(cardId: string, emoji: string, userName: string): void {
-    // Check if this user already reacted with this emoji
-    const existing = [
-      ...this.ctx.storage.sql.exec<{ card_id: string }>(
-        "SELECT card_id FROM reactions WHERE card_id = ? AND emoji = ? AND user_name = ?",
-        cardId,
-        emoji,
-        userName,
-      ),
-    ];
-
-    if (existing.length > 0) {
-      this.ctx.storage.sql.exec(
-        "DELETE FROM reactions WHERE card_id = ? AND emoji = ? AND user_name = ?",
-        cardId,
-        emoji,
-        userName,
-      );
-    } else {
-      this.ctx.storage.sql.exec(
-        "INSERT INTO reactions (card_id, emoji, user_name) VALUES (?, ?, ?)",
-        cardId,
-        emoji,
-        userName,
-      );
-    }
-
-    const reactions = this.getReactionsForCard(cardId);
-    this.broadcast({ type: "reaction:toggled", cardId, emoji, userName, reactions });
   }
 
   private handleCommentCreate(session: SessionData, cardId: string, content: string): void {
@@ -619,20 +573,6 @@ export class RetroRoom extends DurableObject<Env> {
     }));
   }
 
-  private getAllReactions(): Reaction[] {
-    const rows = this.ctx.storage.sql.exec<{
-      card_id: string;
-      emoji: string;
-      user_name: string;
-    }>("SELECT * FROM reactions");
-
-    return [...rows].map((row) => ({
-      cardId: row.card_id,
-      emoji: row.emoji,
-      userName: row.user_name,
-    }));
-  }
-
   private getAllUpvotes(): Upvote[] {
     const rows = this.ctx.storage.sql.exec<{ card_id: string; user_id: string }>(
       "SELECT * FROM upvotes",
@@ -676,20 +616,6 @@ export class RetroRoom extends DurableObject<Env> {
     }));
   }
 
-  private getReactionsForCard(cardId: string): Reaction[] {
-    const rows = this.ctx.storage.sql.exec<{
-      card_id: string;
-      emoji: string;
-      user_name: string;
-    }>("SELECT * FROM reactions WHERE card_id = ?", cardId);
-
-    return [...rows].map((row) => ({
-      cardId: row.card_id,
-      emoji: row.emoji,
-      userName: row.user_name,
-    }));
-  }
-
   private getNextPosition(columnId: ColumnId): number {
     const rows = [
       ...this.ctx.storage.sql.exec<{ max_pos: number | null }>(
@@ -724,7 +650,6 @@ export class RetroRoom extends DurableObject<Env> {
   private getFullState(): ServerMessage {
     const columns = this.getColumns();
     const cards = this.getAllCards();
-    const reactions = this.getAllReactions();
     const upvotes = this.getAllUpvotes();
     const comments = this.getAllComments();
     const blurred = this.getBlurred();
@@ -737,7 +662,6 @@ export class RetroRoom extends DurableObject<Env> {
       type: "state",
       cards,
       columns,
-      reactions,
       upvotes,
       comments,
       users,

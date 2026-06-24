@@ -27,12 +27,6 @@ export interface Card {
   createdAt: number;
 }
 
-export interface Reaction {
-  cardId: string;
-  emoji: string;
-  userName: string;
-}
-
 export interface Upvote {
   cardId: string;
   userId: string;
@@ -89,8 +83,7 @@ export type ClientMessage =
   | { type: "column:update"; columnId: ColumnId; label: string }
   | { type: "blur:set"; blurred: boolean }
   | { type: "sort:set"; sortByUpvotes: boolean }
-  | { type: "upvote:toggle"; cardId: string }
-  | { type: "reaction:toggle"; cardId: string; emoji: string };
+  | { type: "upvote:toggle"; cardId: string };
 
 // WebSocket messages: Server → Client
 export type ServerMessage =
@@ -98,7 +91,6 @@ export type ServerMessage =
       type: "state";
       cards: Card[];
       columns: RetroColumn[];
-      reactions: Reaction[];
       upvotes: Upvote[];
       comments: CardComment[];
       users: RetroUser[];
@@ -138,14 +130,7 @@ export type ServerMessage =
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }
   | { type: "upvote:toggled"; cardId: string; upvotes: Upvote[] }
-  | { type: "retro:deleted" }
-  | {
-      type: "reaction:toggled";
-      cardId: string;
-      emoji: string;
-      userName: string;
-      reactions: Reaction[];
-    };
+  | { type: "retro:deleted" };
 
 // User colors for cursors
 export const USER_COLORS = [

@@ -1,11 +1,10 @@
 import type { ClientMessage, ColumnId, ServerMessage } from "../../types";
 import { COLUMNS } from "../../types";
 
-// A demo persona: a name, the three cards it adds, and the emoji it reacts with.
+// A demo persona: a name and the three cards it adds.
 interface Persona {
   name: string;
   cards: [ColumnId, string][];
-  emojis: string[];
 }
 
 const PERSONAS: Persona[] = [
@@ -16,7 +15,6 @@ const PERSONAS: Persona[] = [
       ["challenges", "Scope crept late and we had to cut two stretch goals."],
       ["questions", "Do we have capacity for a fast-follow release next month?"],
     ],
-    emojis: ["👍", "🎉", "💯", "⭐"],
   },
   {
     name: "Devon (Engineer)",
@@ -25,7 +23,6 @@ const PERSONAS: Persona[] = [
       ["challenges", "Flaky integration tests kept blocking the release candidate."],
       ["questions", "Should we retire the legacy queue next sprint?"],
     ],
-    emojis: ["🔥", "🚀", "💯", "👍"],
   },
   {
     name: "Sasha (Designer)",
@@ -34,7 +31,6 @@ const PERSONAS: Persona[] = [
       ["challenges", "Design handoff was rushed; several specs landed late."],
       ["questions", "Can we run a post-launch usability study on the dashboard?"],
     ],
-    emojis: ["🤔", "👀", "⭐", "❤️"],
   },
 ];
 
@@ -91,7 +87,6 @@ function makeBot(retroId: string, persona: Persona): () => void {
 
   const cards = new Map<string, { columnId: ColumnId; position: number }>();
   const upvoted = new Set<string>();
-  const reacted = new Set<string>();
   let alive = true;
   let pos: Ratio = { x: rnd(0.2, 0.8), y: rnd(0.2, 0.6) };
 
@@ -229,18 +224,6 @@ function makeBot(retroId: string, persona: Persona): () => void {
           if (!upvoted.has(id)) {
             upvoted.add(id);
             send({ type: "upvote:toggle", cardId: id });
-          }
-          await sleep(rnd(150, 450));
-        } else if (roll < 0.88 && cardIds().length) {
-          const id = pick(cardIds());
-          const emoji = pick(persona.emojis);
-          await glideTo(cardRegion(id));
-          pointAtCard(id);
-          await sleep(rnd(200, 420));
-          const key = `${id}:${emoji}`;
-          if (!reacted.has(key)) {
-            reacted.add(key);
-            send({ type: "reaction:toggle", cardId: id, emoji });
           }
           await sleep(rnd(150, 450));
         } else if (cardIds().length) {

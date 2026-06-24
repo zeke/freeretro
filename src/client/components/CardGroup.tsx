@@ -1,4 +1,5 @@
-import type { Card, Reaction, ClientMessage } from "../../types";
+import type { Card, ClientMessage } from "../../types";
+import { MarkdownContent } from "./MarkdownContent";
 
 interface CardGroupProps {
   cards: Card[];
@@ -7,7 +8,6 @@ interface CardGroupProps {
   userName: string;
   userId: string;
   blurred: boolean;
-  getReactionsForCard: (cardId: string) => Reaction[];
 }
 
 export function CardGroup({
@@ -29,13 +29,13 @@ export function CardGroup({
             key={card.id}
             className="group border-cf-border bg-cf-bg-hover hover:border-cf-orange relative border p-2 transition-all hover:border-dashed"
           >
-            <p
+            <div
               className={`text-cf-text text-xs whitespace-pre-wrap transition-[filter] ${
                 shouldBlur ? "blur-sm select-none" : ""
               }`}
             >
-              {card.content}
-            </p>
+              <MarkdownContent content={card.content} />
+            </div>
             <div className="mt-1 flex items-center justify-between">
               <span className="text-cf-text-muted text-xs">{card.author}</span>
               <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">

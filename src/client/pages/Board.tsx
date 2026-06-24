@@ -124,9 +124,7 @@ export function Board() {
   };
 
   const deleteRetro = async () => {
-    const confirmed = window.confirm(
-      "Delete this retro forever? This removes all cards and reactions and can't be undone.",
-    );
+    const confirmed = window.confirm("Delete this retro forever? This can't be undone.");
     if (!confirmed) return;
 
     await fetch(`/api/retros/${retroId}`, { method: "DELETE" });
@@ -286,7 +284,6 @@ export function Board() {
               label={column.label}
               cards={state.getCardsForColumn(column.id)}
               getGroupedCards={state.getGroupedCards}
-              getReactionsForCard={state.getReactionsForCard}
               getUpvotesForCard={state.getUpvotesForCard}
               getCommentsForCard={state.getCommentsForCard}
               send={send}

@@ -17,11 +17,13 @@
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.8.1",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.1.0",
-    "emoji-picker-react": "^4.18.0",
     "hono": "^4.12.14",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.14.2"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.14.2",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.33.1",

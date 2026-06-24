@@ -3,7 +3,6 @@ import type {
   CardComment,
   ClientMessage,
   ColumnId,
-  Reaction,
   RetroColumn,
   RetroUser,
   Upvote,
@@ -17,7 +16,6 @@ export interface BoardSnapshot {
   cards: Card[];
   columns: RetroColumn[];
   users: RetroUser[];
-  reactions: Reaction[];
   upvotes: Upvote[];
   comments: CardComment[];
   blurred: boolean;
@@ -70,9 +68,9 @@ export function createTools(ctx: ToolContext): AgentTool[] {
     {
       name: "list_cards",
       description:
-        "List all cards on the board with their column, author, content, upvote count, reactions, and comments.",
+        "List all cards on the board with their column, author, content, upvote count, and comments.",
       execute: () => {
-        const { cards, upvotes, reactions, comments } = getState();
+        const { cards, upvotes, comments } = getState();
         return json(
           cards.map((card) => ({
             id: card.id,
@@ -81,12 +79,6 @@ export function createTools(ctx: ToolContext): AgentTool[] {
             author: card.author,
             groupId: card.groupId,
             upvotes: upvotes.filter((u) => u.cardId === card.id).length,
-            reactions: reactions
-              .filter((r) => r.cardId === card.id)
-              .reduce<Record<string, number>>((acc, r) => {
-                acc[r.emoji] = (acc[r.emoji] ?? 0) + 1;
-                return acc;
-              }, {}),
             comments: comments
               .filter((comment) => comment.cardId === card.id)
               .map((comment) => ({
@@ -220,28 +212,6 @@ export function createTools(ctx: ToolContext): AgentTool[] {
         await embodiment.click({ type: "card-control", cardId, control: "upvote" });
         send({ type: "upvote:toggle", cardId });
         return ok(`Toggled upvote on card ${cardId}.`);
-      },
-    },
-    {
-      name: "react_to_card",
-      description: "Toggle an emoji reaction on a card.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          cardId: { type: "string" },
-          emoji: { type: "string", description: "An emoji, e.g. 🚀." },
-        },
-        required: ["cardId", "emoji"],
-      },
-      execute: async ({ cardId, emoji }) => {
-        if (typeof cardId !== "string") return err("cardId is required.");
-        if (typeof emoji !== "string" || !emoji) return err("emoji is required.");
-        // Aim at the existing reaction chip if present, else the "+" picker button.
-        const hasChip = getState().reactions.some((r) => r.cardId === cardId && r.emoji === emoji);
-        const control = hasChip ? `reaction-${emoji}` : "react";
-        await embodiment.click({ type: "card-control", cardId, control });
-        send({ type: "reaction:toggle", cardId, emoji });
-        return ok(`Toggled ${emoji} on card ${cardId}.`);
       },
     },
     {

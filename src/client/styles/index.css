@@ -28,3 +28,67 @@ body {
   background: var(--color-cf-border);
   border-radius: 3px;
 }
+
+.markdown-content > * + * {
+  margin-top: 0.5em;
+}
+
+.markdown-content :where(ul, ol) {
+  padding-left: 1.25em;
+}
+
+.markdown-content ul {
+  list-style: disc;
+}
+
+.markdown-content ol {
+  list-style: decimal;
+}
+
+.markdown-content :where(blockquote) {
+  border-left: 2px solid var(--color-cf-border);
+  color: var(--color-cf-text-muted);
+  padding-left: 0.75em;
+}
+
+.markdown-content :where(code) {
+  background: var(--color-cf-bg-hover);
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  padding: 0.1em 0.3em;
+}
+
+.markdown-content :where(pre) {
+  background: var(--color-cf-bg-hover);
+  border: 1px solid var(--color-cf-border);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+.markdown-content :where(a) {
+  color: var(--color-cf-orange);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-content :where(table) {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.markdown-content :where(th, td) {
+  border: 1px solid var(--color-cf-border);
+  padding: 0.25rem 0.4rem;
+}
+
+.markdown-content :where(input[type="checkbox"]) {
+  margin-right: 0.35em;
+}

@@ -3,7 +3,6 @@ import { DEFAULT_COLUMNS } from "../../types";
 import type {
   Card,
   CardComment,
-  Reaction,
   RetroUser,
   ServerMessage,
   ColumnId,
@@ -14,7 +13,6 @@ import type {
 interface RetroState {
   cards: Card[];
   columns: RetroColumn[];
-  reactions: Reaction[];
   upvotes: Upvote[];
   comments: CardComment[];
   users: RetroUser[];
@@ -28,7 +26,6 @@ type RetroAction =
       type: "state";
       cards: Card[];
       columns: RetroColumn[];
-      reactions: Reaction[];
       upvotes: Upvote[];
       comments: CardComment[];
       users: RetroUser[];
@@ -47,8 +44,7 @@ type RetroAction =
   | { type: "column:updated"; column: RetroColumn }
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }
-  | { type: "upvote:toggled"; cardId: string; upvotes: Upvote[] }
-  | { type: "reaction:toggled"; cardId: string; reactions: Reaction[] };
+  | { type: "upvote:toggled"; cardId: string; upvotes: Upvote[] };
 
 function reducer(state: RetroState, action: RetroAction): RetroState {
   switch (action.type) {
@@ -56,7 +52,6 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
       return {
         cards: action.cards,
         columns: action.columns,
-        reactions: action.reactions,
         upvotes: action.upvotes,
         comments: action.comments,
         users: action.users,
@@ -92,7 +87,6 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
       return {
         ...state,
         cards: state.cards.filter((c) => c.id !== action.cardId && c.groupId !== action.cardId),
-        reactions: state.reactions.filter((r) => r.cardId !== action.cardId),
         upvotes: state.upvotes.filter((upvote) => upvote.cardId !== action.cardId),
         comments: state.comments.filter((comment) => comment.cardId !== action.cardId),
       };
@@ -120,11 +114,6 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
             : c,
         ),
       };
-
-    case "reaction:toggled": {
-      const otherReactions = state.reactions.filter((r) => r.cardId !== action.cardId);
-      return { ...state, reactions: [...otherReactions, ...action.reactions] };
-    }
 
     case "column:updated":
       return {
@@ -156,7 +145,6 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
 const initialState: RetroState = {
   cards: [],
   columns: DEFAULT_COLUMNS.map((column) => ({ ...column })),
-  reactions: [],
   upvotes: [],
   comments: [],
   users: [],
@@ -176,7 +164,6 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
             type: "state",
             cards: msg.cards,
             columns: msg.columns,
-            reactions: msg.reactions,
             upvotes: msg.upvotes,
             comments: msg.comments,
             users: msg.users,
@@ -225,13 +212,6 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
         case "upvote:toggled":
           dispatch({ type: "upvote:toggled", cardId: msg.cardId, upvotes: msg.upvotes });
           break;
-        case "reaction:toggled":
-          dispatch({
-            type: "reaction:toggled",
-            cardId: msg.cardId,
-            reactions: msg.reactions,
-          });
-          break;
         case "comment:created":
           dispatch({ type: "comment:created", comment: msg.comment });
           break;
@@ -264,13 +244,6 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
     [state.cards],
   );
 
-  const getReactionsForCard = useCallback(
-    (cardId: string) => {
-      return state.reactions.filter((r) => r.cardId === cardId);
-    },
-    [state.reactions],
-  );
-
   const getUpvotesForCard = useCallback(
     (cardId: string) => {
       return state.upvotes.filter((upvote) => upvote.cardId === cardId);
@@ -289,7 +262,6 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
     ...state,
     getCardsForColumn,
     getGroupedCards,
-    getReactionsForCard,
     getUpvotesForCard,
     getCommentsForCard,
   };
