@@ -4,6 +4,10 @@ Free Retro is a real-time retrospective board. Create an unlisted retro, share t
 
 Built with 🧡 by Cloudflare.
 
+## Demo
+
+[![Free Retro demo](demo-thumb.jpg)](demo.mp4)
+
 ## Development
 
 ```sh
