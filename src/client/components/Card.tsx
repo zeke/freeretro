@@ -153,7 +153,10 @@ export function RetroCard({
 
   const controlBase =
     "text-cf-text-muted hover:text-cf-orange group/tooltip relative inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-full px-2 text-sm transition-all hover:-translate-y-px hover:bg-orange-50 focus-visible:text-cf-orange focus-visible:outline-none";
-  const activeControl = "text-cf-orange";
+  // `!` forces this to win over the always-present `text-cf-text-muted` base
+  // color, which has equal CSS specificity and would otherwise flicker back
+  // to muted once the pointer isn't hovering the control.
+  const activeControl = "!text-cf-orange";
 
   return (
     <div>
