@@ -275,6 +275,10 @@ export class RetroRoom extends DurableObject<Env> {
         this.handleColumnUpdate(msg.columnId, msg.label);
         break;
 
+      case "column:move":
+        this.handleColumnMove(msg.columnId, msg.position);
+        break;
+
       case "column:delete":
         this.handleColumnDelete(msg.columnId);
         break;
@@ -479,6 +483,21 @@ export class RetroRoom extends DurableObject<Env> {
     const column = this.getColumn(columnId);
     if (column) {
       this.broadcast({ type: "column:updated", column });
+    }
+  }
+
+  private handleColumnMove(columnId: ColumnId, position: number): void {
+    if (!this.getColumn(columnId)) return;
+
+    this.ctx.storage.sql.exec(
+      "UPDATE retro_columns SET position = ? WHERE id = ?",
+      position,
+      columnId,
+    );
+
+    const column = this.getColumn(columnId);
+    if (column) {
+      this.broadcast({ type: "column:moved", column });
     }
   }
 

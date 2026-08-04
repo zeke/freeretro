@@ -282,6 +282,30 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
     },
     {
+      name: "move_column",
+      description: "Reorder a column. Position defaults to the end of the board when omitted.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          columnId: columnSchema,
+          position: { type: "number", description: "Optional explicit position." },
+        },
+        required: ["columnId"],
+      },
+      execute: async ({ columnId, position }) => {
+        if (!isColumnId(columnId, getState().columns))
+          return err(`Invalid columnId: ${String(columnId)}`);
+        const columns = getState().columns;
+        const resolved =
+          typeof position === "number"
+            ? position
+            : Math.max(...columns.map((column) => column.position), -1) + 1;
+        await embodiment.click({ type: "column", columnId });
+        send({ type: "column:move", columnId, position: resolved });
+        return json({ column: { id: columnId, position: resolved } });
+      },
+    },
+    {
       name: "delete_column",
       description:
         "Delete a column and all of its cards. There must be at least one other column remaining.",

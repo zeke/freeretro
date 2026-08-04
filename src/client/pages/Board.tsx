@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { useRetroState } from "../hooks/useRetroState";
 import { useCursors } from "../hooks/useCursors";
@@ -9,8 +10,57 @@ import { Column } from "../components/Column";
 import { CursorOverlay } from "../components/CursorOverlay";
 import { NamePrompt } from "../components/NamePrompt";
 import { Footer } from "../components/Footer";
-import type { RetroSummary } from "../../types";
+import type { ClientMessage, RetroColumn, RetroSummary } from "../../types";
 import { removeLocalRetro, saveLocalRetro } from "../localRetros";
+
+function AddColumnTile({
+  columns,
+  send,
+}: {
+  columns: RetroColumn[];
+  send: (msg: ClientMessage) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    return dropTargetForElements({
+      element: el,
+      canDrop: ({ source }) => source.data.type === "column",
+      onDragEnter: () => setIsDragOver(true),
+      onDragLeave: () => setIsDragOver(false),
+      onDrop: ({ source }) => {
+        setIsDragOver(false);
+        const columnId = source.data.columnId as string;
+        const lastColumn = columns[columns.length - 1];
+        const position = lastColumn ? lastColumn.position + 1 : 0;
+        send({ type: "column:move", columnId, position });
+      },
+    });
+  }, [columns, send]);
+
+  return (
+    <div
+      ref={ref}
+      className={`min-w-0 ${columns.length > 0 ? "border-cf-border md:border-l md:pl-4" : ""}`}
+    >
+      <button
+        type="button"
+        onClick={() => send({ type: "column:create", label: "New column" })}
+        data-agent-control="add-column"
+        data-agent-prefer-api="create_column"
+        className={`border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange flex h-10 w-full items-center justify-center rounded border border-dashed text-sm transition-all ${
+          isDragOver ? "border-cf-orange ring-cf-orange ring-1" : ""
+        }`}
+      >
+        + Add column
+      </button>
+    </div>
+  );
+}
 
 export function Board() {
   const { retroId } = useParams<{ retroId: string }>();
@@ -282,6 +332,8 @@ export function Board() {
             <Column
               columnId={column.id}
               label={column.label}
+              index={index}
+              columns={state.columns}
               cards={state.getCardsForColumn(column.id)}
               getGroupedCards={state.getGroupedCards}
               getUpvotesForCard={state.getUpvotesForCard}
@@ -295,19 +347,7 @@ export function Board() {
             />
           </div>
         ))}
-        <div
-          className={`min-w-0 ${state.columns.length > 0 ? "border-cf-border md:border-l md:pl-4" : ""}`}
-        >
-          <button
-            type="button"
-            onClick={() => send({ type: "column:create", label: "New column" })}
-            data-agent-control="add-column"
-            data-agent-prefer-api="create_column"
-            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange flex h-10 w-full items-center justify-center rounded border border-dashed text-sm transition-all"
-          >
-            + Add column
-          </button>
-        </div>
+        <AddColumnTile columns={state.columns} send={send} />
         <CursorOverlay
           cursors={cursors}
           clicks={clicks}

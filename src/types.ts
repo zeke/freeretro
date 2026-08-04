@@ -84,6 +84,7 @@ export type ClientMessage =
   | { type: "comment:create"; cardId: string; content: string; id?: string }
   | { type: "column:create"; label: string; id?: string }
   | { type: "column:update"; columnId: ColumnId; label: string }
+  | { type: "column:move"; columnId: ColumnId; position: number }
   | { type: "column:delete"; columnId: ColumnId }
   | { type: "blur:set"; blurred: boolean }
   | { type: "sort:set"; sortByUpvotes: boolean }
@@ -132,6 +133,7 @@ export type ServerMessage =
   | { type: "comment:created"; comment: CardComment }
   | { type: "column:created"; column: RetroColumn }
   | { type: "column:updated"; column: RetroColumn }
+  | { type: "column:moved"; column: RetroColumn }
   | { type: "column:deleted"; columnId: ColumnId }
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }

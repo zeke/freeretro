@@ -201,6 +201,31 @@ describe("agent tools", () => {
     expect(sent).toEqual([]);
   });
 
+  it("move_column defaults position to the end of the board", async () => {
+    const { sent, embodiment, byName } = setup(snapshot());
+    const result = await byName("move_column").execute({ columnId: "notes" });
+    const parsed = JSON.parse(result.content[0].text);
+
+    expect(embodiment.click).toHaveBeenCalledWith({ type: "column", columnId: "notes" });
+    expect(sent).toEqual([{ type: "column:move", columnId: "notes", position: 4 }]);
+    expect(parsed).toEqual({ column: { id: "notes", position: 4 } });
+  });
+
+  it("move_column honors an explicit position", async () => {
+    const { sent, byName } = setup(snapshot());
+    await byName("move_column").execute({ columnId: "notes", position: 0.5 });
+
+    expect(sent).toEqual([{ type: "column:move", columnId: "notes", position: 0.5 }]);
+  });
+
+  it("move_column rejects an invalid column", async () => {
+    const { sent, byName } = setup(snapshot());
+    const result = await byName("move_column").execute({ columnId: "nope" });
+
+    expect(result.isError).toBe(true);
+    expect(sent).toEqual([]);
+  });
+
   it("delete_column sends column:delete after gliding to the delete control", async () => {
     const { sent, embodiment, byName } = setup(snapshot());
     const result = await byName("delete_column").execute({ columnId: "notes" });

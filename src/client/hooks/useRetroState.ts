@@ -43,6 +43,7 @@ type RetroAction =
   | { type: "comment:created"; comment: CardComment }
   | { type: "column:created"; column: RetroColumn }
   | { type: "column:updated"; column: RetroColumn }
+  | { type: "column:moved"; column: RetroColumn }
   | { type: "column:deleted"; columnId: ColumnId }
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }
@@ -124,6 +125,14 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
       };
 
     case "column:updated":
+      return {
+        ...state,
+        columns: state.columns
+          .map((column) => (column.id === action.column.id ? action.column : column))
+          .sort((a, b) => a.position - b.position),
+      };
+
+    case "column:moved":
       return {
         ...state,
         columns: state.columns
@@ -228,6 +237,9 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
           break;
         case "column:updated":
           dispatch({ type: "column:updated", column: msg.column });
+          break;
+        case "column:moved":
+          dispatch({ type: "column:moved", column: msg.column });
           break;
         case "column:deleted":
           dispatch({ type: "column:deleted", columnId: msg.columnId });

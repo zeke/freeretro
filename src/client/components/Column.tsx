@@ -1,12 +1,24 @@
 import { useRef, useEffect, useState } from "react";
-import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import type { Card as CardType, CardComment, Upvote, ColumnId, ClientMessage } from "../../types";
+import {
+  draggable,
+  dropTargetForElements,
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import type {
+  Card as CardType,
+  CardComment,
+  Upvote,
+  ColumnId,
+  RetroColumn,
+  ClientMessage,
+} from "../../types";
 import { RetroCard } from "./Card";
 import { CardForm } from "./CardForm";
 
 interface ColumnProps {
   columnId: ColumnId;
   label: string;
+  index: number;
+  columns: RetroColumn[];
   cards: CardType[];
   getGroupedCards: (groupId: string) => CardType[];
   getUpvotesForCard: (cardId: string) => Upvote[];
@@ -22,6 +34,8 @@ interface ColumnProps {
 export function Column({
   columnId,
   label,
+  index,
+  columns,
   cards,
   getGroupedCards,
   getUpvotesForCard,
@@ -34,7 +48,9 @@ export function Column({
   draggedCardIds,
 }: ColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
+  const columnDragHandleRef = useRef<HTMLButtonElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isDraggingColumn, setIsDraggingColumn] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [draftLabel, setDraftLabel] = useState(label);
 
@@ -46,18 +62,50 @@ export function Column({
 
   useEffect(() => {
     const el = columnRef.current;
+    const handle = columnDragHandleRef.current;
+    if (!el || !handle) return;
+
+    return draggable({
+      element: el,
+      dragHandle: handle,
+      getInitialData: () => ({ type: "column", columnId, index }),
+      onDragStart: () => setIsDraggingColumn(true),
+      onDrop: () => setIsDraggingColumn(false),
+    });
+  }, [columnId, index]);
+
+  useEffect(() => {
+    const el = columnRef.current;
     if (!el) return;
 
     return dropTargetForElements({
       element: el,
       getData: () => ({ columnId }),
       canDrop: ({ source }) => {
-        return source.data.type === "card";
+        return source.data.type === "card" || source.data.type === "column";
       },
       onDragEnter: () => setIsDragOver(true),
       onDragLeave: () => setIsDragOver(false),
       onDrop: ({ source }) => {
         setIsDragOver(false);
+
+        if (source.data.type === "column") {
+          const sourceColumnId = source.data.columnId as string;
+          if (sourceColumnId === columnId) return;
+
+          // Insert the dragged column immediately before this one.
+          const others = columns
+            .filter((column) => column.id !== sourceColumnId)
+            .sort((a, b) => a.position - b.position);
+          const targetIndex = others.findIndex((column) => column.id === columnId);
+          const before = others[targetIndex - 1]?.position;
+          const after = others[targetIndex]?.position ?? (before ?? 0) + 2;
+          const position = before !== undefined ? (before + after) / 2 : after - 1;
+
+          send({ type: "column:move", columnId: sourceColumnId, position });
+          return;
+        }
+
         const cardId = source.data.cardId as string;
         const sourceColumnId = source.data.columnId as string;
 
@@ -75,7 +123,7 @@ export function Column({
         }
       },
     });
-  }, [columnId, cards, send]);
+  }, [columnId, cards, columns, send]);
 
   const handleCreateCard = (content: string) => {
     send({ type: "card:create", columnId, content });
@@ -108,8 +156,8 @@ export function Column({
       data-agent="column"
       data-column-id={columnId}
       className={`flex min-h-80 w-full min-w-0 flex-col transition-all ${
-        isDragOver ? "ring-cf-orange ring-opacity-50 ring-2" : ""
-      }`}
+        isDraggingColumn ? "opacity-40" : ""
+      } ${isDragOver ? "ring-cf-orange ring-opacity-50 ring-2" : ""}`}
     >
       {/* Column header */}
       <div className="flex items-center justify-between px-1 py-3">
@@ -148,6 +196,14 @@ export function Column({
           <span className="text-cf-text-muted text-xs">{cards.length}</span>
           <button
             type="button"
+            ref={columnDragHandleRef}
+            aria-label="Drag column"
+            className="text-cf-text-muted hover:text-cf-orange cursor-grab transition-colors active:cursor-grabbing"
+          >
+            ⋮⋮
+          </button>
+          <button
+            type="button"
             onClick={handleDeleteColumn}
             data-agent-control="delete"
             data-agent-prefer-api="delete_column"
@@ -161,11 +217,11 @@ export function Column({
 
       {/* Cards */}
       <div className="flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-3">
-        {cards.map((card, index) => (
+        {cards.map((card, cardIndex) => (
           <RetroCard
             key={card.id}
             card={card}
-            index={index}
+            index={cardIndex}
             groupedCards={getGroupedCards(card.id)}
             upvotes={getUpvotesForCard(card.id)}
             comments={getCommentsForCard(card.id)}
