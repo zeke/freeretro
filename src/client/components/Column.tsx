@@ -3,6 +3,11 @@ import {
   draggable,
   dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import {
+  attachClosestEdge,
+  extractClosestEdge,
+  type Edge,
+} from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
 import type {
   Card as CardType,
   CardComment,
@@ -48,9 +53,10 @@ export function Column({
   draggedCardIds,
 }: ColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
-  const columnDragHandleRef = useRef<HTMLButtonElement>(null);
+  const columnHeaderHandleRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDraggingColumn, setIsDraggingColumn] = useState(false);
+  const [columnDropEdge, setColumnDropEdge] = useState<Edge | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [draftLabel, setDraftLabel] = useState(label);
 
@@ -62,7 +68,7 @@ export function Column({
 
   useEffect(() => {
     const el = columnRef.current;
-    const handle = columnDragHandleRef.current;
+    const handle = columnHeaderHandleRef.current;
     if (!el || !handle) return;
 
     return draggable({
@@ -80,27 +86,52 @@ export function Column({
 
     return dropTargetForElements({
       element: el,
-      getData: () => ({ columnId }),
+      getData: ({ input, element }) =>
+        attachClosestEdge({ columnId }, { input, element, allowedEdges: ["left", "right"] }),
       canDrop: ({ source }) => {
         return source.data.type === "card" || source.data.type === "column";
       },
-      onDragEnter: () => setIsDragOver(true),
-      onDragLeave: () => setIsDragOver(false),
-      onDrop: ({ source }) => {
+      onDrag: ({ source, self }) => {
+        if (source.data.type === "column") {
+          setColumnDropEdge(extractClosestEdge(self.data));
+        }
+      },
+      onDragEnter: ({ source, self }) => {
+        if (source.data.type === "column") {
+          setColumnDropEdge(extractClosestEdge(self.data));
+        } else {
+          setIsDragOver(true);
+        }
+      },
+      onDragLeave: () => {
         setIsDragOver(false);
+        setColumnDropEdge(null);
+      },
+      onDrop: ({ source, self }) => {
+        setIsDragOver(false);
+        const edge = extractClosestEdge(self.data);
+        setColumnDropEdge(null);
 
         if (source.data.type === "column") {
           const sourceColumnId = source.data.columnId as string;
           if (sourceColumnId === columnId) return;
 
-          // Insert the dragged column immediately before this one.
+          // Drop to the left inserts before this column; to the right inserts after it.
           const others = columns
             .filter((column) => column.id !== sourceColumnId)
             .sort((a, b) => a.position - b.position);
           const targetIndex = others.findIndex((column) => column.id === columnId);
-          const before = others[targetIndex - 1]?.position;
-          const after = others[targetIndex]?.position ?? (before ?? 0) + 2;
-          const position = before !== undefined ? (before + after) / 2 : after - 1;
+
+          let position: number;
+          if (edge === "right") {
+            const before = others[targetIndex]?.position ?? 0;
+            const after = others[targetIndex + 1]?.position ?? before + 2;
+            position = (before + after) / 2;
+          } else {
+            const before = others[targetIndex - 1]?.position;
+            const after = others[targetIndex]?.position ?? (before ?? 0) + 2;
+            position = before !== undefined ? (before + after) / 2 : after - 1;
+          }
 
           send({ type: "column:move", columnId: sourceColumnId, position });
           return;
@@ -155,12 +186,26 @@ export function Column({
       ref={columnRef}
       data-agent="column"
       data-column-id={columnId}
-      className={`flex min-h-80 w-full min-w-0 flex-col transition-all ${
+      className={`relative flex min-h-80 w-full min-w-0 flex-col transition-all ${
         isDraggingColumn ? "opacity-40" : ""
       } ${isDragOver ? "ring-cf-orange ring-opacity-50 ring-2" : ""}`}
     >
+      {columnDropEdge && (
+        <div
+          aria-hidden="true"
+          className={`bg-cf-orange pointer-events-none absolute top-0 bottom-0 z-20 w-0.5 rounded-full ${
+            columnDropEdge === "left" ? "-left-2" : "-right-2"
+          }`}
+        />
+      )}
+
       {/* Column header */}
-      <div className="flex items-center justify-between px-1 py-3">
+      <div className="relative flex items-center justify-between px-1 py-3">
+        <div
+          ref={columnHeaderHandleRef}
+          aria-hidden="true"
+          className="absolute inset-0 cursor-grab active:cursor-grabbing"
+        />
         {isEditingLabel ? (
           <input
             value={draftLabel}
@@ -178,7 +223,7 @@ export function Column({
             }}
             autoFocus
             maxLength={40}
-            className="border-cf-border bg-cf-bg-card text-cf-text focus:border-cf-orange w-full rounded border px-2 py-1 font-medium tracking-tight outline-none"
+            className="border-cf-border bg-cf-bg-card text-cf-text focus:border-cf-orange relative z-10 w-full rounded border px-2 py-1 font-medium tracking-tight outline-none"
           />
         ) : (
           <button
@@ -187,28 +232,20 @@ export function Column({
             data-agent-control="rename"
             data-agent-prefer-api="rename_column"
             title="Rename column"
-            className="text-cf-text hover:text-cf-orange truncate text-left font-medium tracking-tight transition-colors"
+            className="text-cf-text hover:text-cf-orange relative z-10 cursor-pointer truncate text-left font-medium tracking-tight transition-colors"
           >
             {label}
           </button>
         )}
-        <div className="flex items-center gap-2">
+        <div className="relative z-10 flex items-center gap-2">
           <span className="text-cf-text-muted text-xs">{cards.length}</span>
-          <button
-            type="button"
-            ref={columnDragHandleRef}
-            aria-label="Drag column"
-            className="text-cf-text-muted hover:text-cf-orange cursor-grab transition-colors active:cursor-grabbing"
-          >
-            ⋮⋮
-          </button>
           <button
             type="button"
             onClick={handleDeleteColumn}
             data-agent-control="delete"
             data-agent-prefer-api="delete_column"
             title="Delete column"
-            className="text-cf-text-muted transition-colors hover:text-red-500"
+            className="text-cf-text-muted cursor-pointer opacity-40 transition-opacity hover:text-red-500 hover:opacity-100"
           >
             ✕
           </button>
