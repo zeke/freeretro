@@ -295,6 +295,19 @@ export function Board() {
             />
           </div>
         ))}
+        <div
+          className={`min-w-0 ${state.columns.length > 0 ? "border-cf-border md:border-l md:pl-4" : ""}`}
+        >
+          <button
+            type="button"
+            onClick={() => send({ type: "column:create", label: "New column" })}
+            data-agent-control="add-column"
+            data-agent-prefer-api="create_column"
+            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange flex h-10 w-full items-center justify-center rounded border border-dashed text-sm transition-all"
+          >
+            + Add column
+          </button>
+        </div>
         <CursorOverlay
           cursors={cursors}
           clicks={clicks}

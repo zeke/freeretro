@@ -132,7 +132,19 @@ export function Column({
             {label}
           </button>
         )}
-        <span className="text-cf-text-muted text-xs">{cards.length}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-cf-text-muted text-xs">{cards.length}</span>
+          <button
+            type="button"
+            onClick={handleDeleteColumn}
+            data-agent-control="delete"
+            data-agent-prefer-api="delete_column"
+            title="Delete column"
+            className="text-cf-text-muted transition-colors hover:text-red-500"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Cards */}

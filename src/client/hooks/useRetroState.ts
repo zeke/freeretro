@@ -41,7 +41,9 @@ type RetroAction =
   | { type: "card:grouped"; cardId: string; groupId: string }
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
   | { type: "comment:created"; comment: CardComment }
+  | { type: "column:created"; column: RetroColumn }
   | { type: "column:updated"; column: RetroColumn }
+  | { type: "column:deleted"; columnId: ColumnId }
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }
   | { type: "upvote:toggled"; cardId: string; upvotes: Upvote[] };
@@ -115,12 +117,33 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
         ),
       };
 
+    case "column:created":
+      return {
+        ...state,
+        columns: [...state.columns, action.column].sort((a, b) => a.position - b.position),
+      };
+
     case "column:updated":
       return {
         ...state,
         columns: state.columns
           .map((column) => (column.id === action.column.id ? action.column : column))
           .sort((a, b) => a.position - b.position),
+      };
+
+    case "column:deleted":
+      return {
+        ...state,
+        columns: state.columns.filter((column) => column.id !== action.columnId),
+        cards: state.cards.filter((card) => card.columnId !== action.columnId),
+        upvotes: state.upvotes.filter((upvote) => {
+          const card = state.cards.find((c) => c.id === upvote.cardId);
+          return !card || card.columnId !== action.columnId;
+        }),
+        comments: state.comments.filter((comment) => {
+          const card = state.cards.find((c) => c.id === comment.cardId);
+          return !card || card.columnId !== action.columnId;
+        }),
       };
 
     case "blur:updated":
@@ -200,8 +223,14 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
             position: msg.position,
           });
           break;
+        case "column:created":
+          dispatch({ type: "column:created", column: msg.column });
+          break;
         case "column:updated":
           dispatch({ type: "column:updated", column: msg.column });
+          break;
+        case "column:deleted":
+          dispatch({ type: "column:deleted", columnId: msg.columnId });
           break;
         case "blur:updated":
           dispatch({ type: "blur:updated", blurred: msg.blurred });

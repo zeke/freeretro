@@ -7,7 +7,6 @@ import type {
   RetroUser,
   Upvote,
 } from "../../types";
-import { COLUMNS } from "../../types";
 import type { AgentTool, ToolResult } from "./webmcp";
 import type { Embodiment, InteractionMode } from "./embodiment";
 
@@ -45,8 +44,8 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
-function isColumnId(value: unknown): value is ColumnId {
-  return typeof value === "string" && (COLUMNS as string[]).includes(value);
+function isColumnId(value: unknown, columns: RetroColumn[]): value is ColumnId {
+  return typeof value === "string" && columns.some((column) => column.id === value);
 }
 
 // Position at the end of the target column, matching the drag-and-drop and
@@ -61,8 +60,7 @@ function endOfColumnPosition(cards: Card[], columnId: ColumnId): number {
 
 const columnSchema = {
   type: "string",
-  enum: [...COLUMNS],
-  description: "Column id: highlights, challenges, questions, or notes.",
+  description: "Column id. Call list_columns to see the current columns.",
 };
 
 export function createTools(ctx: ToolContext): AgentTool[] {
@@ -138,7 +136,8 @@ export function createTools(ctx: ToolContext): AgentTool[] {
         required: ["columnId", "content"],
       },
       execute: async ({ columnId, content }) => {
-        if (!isColumnId(columnId)) return err(`Invalid columnId: ${String(columnId)}`);
+        if (!isColumnId(columnId, getState().columns))
+          return err(`Invalid columnId: ${String(columnId)}`);
         if (typeof content !== "string" || !content.trim()) return err("content is required.");
         const id = newId();
         const trimmed = content.trim();
@@ -197,7 +196,8 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
       execute: async ({ cardId, columnId, position }) => {
         if (typeof cardId !== "string") return err("cardId is required.");
-        if (!isColumnId(columnId)) return err(`Invalid columnId: ${String(columnId)}`);
+        if (!isColumnId(columnId, getState().columns))
+          return err(`Invalid columnId: ${String(columnId)}`);
         const resolved =
           typeof position === "number" ? position : endOfColumnPosition(getState().cards, columnId);
         await embodiment.drag({ type: "card", cardId }, { type: "column", columnId }, () => {
@@ -254,12 +254,48 @@ export function createTools(ctx: ToolContext): AgentTool[] {
         required: ["columnId", "label"],
       },
       execute: async ({ columnId, label }) => {
-        if (!isColumnId(columnId)) return err(`Invalid columnId: ${String(columnId)}`);
+        if (!isColumnId(columnId, getState().columns))
+          return err(`Invalid columnId: ${String(columnId)}`);
         if (typeof label !== "string" || !label.trim()) return err("label is required.");
         const trimmed = label.trim();
         await embodiment.click({ type: "column-control", columnId, control: "rename" });
         send({ type: "column:update", columnId, label: trimmed });
         return json({ column: { id: columnId, label: trimmed } });
+      },
+    },
+    {
+      name: "create_column",
+      description: "Add a new column to the board.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          label: { type: "string", description: "The column label." },
+        },
+        required: ["label"],
+      },
+      execute: async ({ label }) => {
+        if (typeof label !== "string" || !label.trim()) return err("label is required.");
+        const id = newId();
+        const trimmed = label.trim();
+        send({ type: "column:create", id, label: trimmed });
+        return json({ column: { id, label: trimmed } });
+      },
+    },
+    {
+      name: "delete_column",
+      description:
+        "Delete a column and all of its cards. There must be at least one other column remaining.",
+      inputSchema: {
+        type: "object",
+        properties: { columnId: columnSchema },
+        required: ["columnId"],
+      },
+      execute: async ({ columnId }) => {
+        if (!isColumnId(columnId, getState().columns))
+          return err(`Invalid columnId: ${String(columnId)}`);
+        await embodiment.click({ type: "column-control", columnId, control: "delete" });
+        send({ type: "column:delete", columnId });
+        return json({ deleted: { columnId } });
       },
     },
     {

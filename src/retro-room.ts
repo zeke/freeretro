@@ -10,7 +10,7 @@ import type {
   RetroColumn,
   Upvote,
 } from "./types";
-import { USER_COLORS, COLUMNS, DEFAULT_COLUMNS } from "./types";
+import { USER_COLORS, DEFAULT_COLUMNS } from "./types";
 
 interface SessionData {
   id: string;
@@ -267,8 +267,16 @@ export class RetroRoom extends DurableObject<Env> {
         this.handleCommentCreate(session, msg.cardId, msg.content, msg.id);
         break;
 
+      case "column:create":
+        this.handleColumnCreate(msg.label, msg.id);
+        break;
+
       case "column:update":
         this.handleColumnUpdate(msg.columnId, msg.label);
+        break;
+
+      case "column:delete":
+        this.handleColumnDelete(msg.columnId);
         break;
 
       case "blur:set":
@@ -311,7 +319,7 @@ export class RetroRoom extends DurableObject<Env> {
     content: string,
     requestedId?: string,
   ): void {
-    if (!COLUMNS.includes(columnId)) return;
+    if (!this.getColumn(columnId)) return;
     if (!content.trim()) return;
 
     const id = this.toUuidOrNew(requestedId);
@@ -364,7 +372,7 @@ export class RetroRoom extends DurableObject<Env> {
   }
 
   private handleCardMove(cardId: string, columnId: ColumnId, position: number): void {
-    if (!COLUMNS.includes(columnId)) return;
+    if (!this.getColumn(columnId)) return;
 
     this.ctx.storage.sql.exec(
       "UPDATE cards SET column_id = ?, position = ?, group_id = NULL WHERE id = ?",
@@ -443,8 +451,26 @@ export class RetroRoom extends DurableObject<Env> {
     this.broadcast({ type: "comment:created", comment });
   }
 
+  private handleColumnCreate(label: string, requestedId?: string): void {
+    const trimmed = label.trim().slice(0, 40);
+    if (!trimmed) return;
+
+    const id = this.toUuidOrNew(requestedId);
+    const position = this.getNextColumnPosition();
+
+    this.ctx.storage.sql.exec(
+      "INSERT INTO retro_columns (id, label, position) VALUES (?, ?, ?)",
+      id,
+      trimmed,
+      position,
+    );
+
+    const column: RetroColumn = { id, label: trimmed, position };
+    this.broadcast({ type: "column:created", column });
+  }
+
   private handleColumnUpdate(columnId: ColumnId, label: string): void {
-    if (!COLUMNS.includes(columnId)) return;
+    if (!this.getColumn(columnId)) return;
 
     const trimmed = label.trim().slice(0, 40);
     if (!trimmed) return;
@@ -454,6 +480,34 @@ export class RetroRoom extends DurableObject<Env> {
     if (column) {
       this.broadcast({ type: "column:updated", column });
     }
+  }
+
+  private handleColumnDelete(columnId: ColumnId): void {
+    if (!this.getColumn(columnId)) return;
+
+    const remaining = [
+      ...this.ctx.storage.sql.exec<{ count: number }>(
+        "SELECT COUNT(*) as count FROM retro_columns",
+      ),
+    ][0]?.count;
+    if (!remaining || remaining <= 1) return;
+
+    const cardIds = [
+      ...this.ctx.storage.sql.exec<{ id: string }>(
+        "SELECT id FROM cards WHERE column_id = ?",
+        columnId,
+      ),
+    ].map((row) => row.id);
+
+    for (const cardId of cardIds) {
+      this.ctx.storage.sql.exec("UPDATE cards SET group_id = NULL WHERE group_id = ?", cardId);
+      this.ctx.storage.sql.exec("DELETE FROM upvotes WHERE card_id = ?", cardId);
+      this.ctx.storage.sql.exec("DELETE FROM card_comments WHERE card_id = ?", cardId);
+    }
+    this.ctx.storage.sql.exec("DELETE FROM cards WHERE column_id = ?", columnId);
+    this.ctx.storage.sql.exec("DELETE FROM retro_columns WHERE id = ?", columnId);
+
+    this.broadcast({ type: "column:deleted", columnId });
   }
 
   private handleBlurSet(blurred: boolean): void {
@@ -627,6 +681,16 @@ export class RetroRoom extends DurableObject<Env> {
       cardId: row.card_id,
       userId: row.user_id,
     }));
+  }
+
+  private getNextColumnPosition(): number {
+    const rows = [
+      ...this.ctx.storage.sql.exec<{ max_pos: number | null }>(
+        "SELECT MAX(position) as max_pos FROM retro_columns",
+      ),
+    ];
+    const maxPos = rows[0]?.max_pos ?? -1;
+    return maxPos + 1;
   }
 
   private getNextPosition(columnId: ColumnId): number {

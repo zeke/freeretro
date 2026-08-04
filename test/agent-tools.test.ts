@@ -3,6 +3,7 @@ import { createTools } from "../src/client/agent/tools";
 import type { BoardSnapshot } from "../src/client/agent/tools";
 import type { Embodiment } from "../src/client/agent/embodiment";
 import type { ClientMessage } from "../src/types";
+import { DEFAULT_COLUMNS } from "../src/types";
 
 function fakeEmbodiment(): Embodiment {
   return {
@@ -19,7 +20,7 @@ function fakeEmbodiment(): Embodiment {
 function snapshot(overrides: Partial<BoardSnapshot> = {}): BoardSnapshot {
   return {
     cards: [],
-    columns: [],
+    columns: DEFAULT_COLUMNS.map((column) => ({ ...column })),
     users: [],
     upvotes: [],
     comments: [],
@@ -180,6 +181,46 @@ describe("agent tools", () => {
         comments: [{ id: "c1", content: "Looks good", author: "q", createdAt: 2 }],
       },
     ]);
+  });
+
+  it("create_column sends a trimmed column:create", async () => {
+    const { sent, byName } = setup(snapshot());
+    const result = await byName("create_column").execute({ label: "  Kudos  " });
+    const parsed = JSON.parse(result.content[0].text);
+
+    expect(result.isError).toBeFalsy();
+    expect(parsed).toEqual({ column: { id: expect.any(String), label: "Kudos" } });
+    expect(sent).toEqual([{ type: "column:create", id: parsed.column.id, label: "Kudos" }]);
+  });
+
+  it("create_column rejects an empty label", async () => {
+    const { sent, byName } = setup(snapshot());
+    const result = await byName("create_column").execute({ label: "   " });
+
+    expect(result.isError).toBe(true);
+    expect(sent).toEqual([]);
+  });
+
+  it("delete_column sends column:delete after gliding to the delete control", async () => {
+    const { sent, embodiment, byName } = setup(snapshot());
+    const result = await byName("delete_column").execute({ columnId: "notes" });
+
+    expect(result.isError).toBeFalsy();
+    expect(embodiment.click).toHaveBeenCalledWith({
+      type: "column-control",
+      columnId: "notes",
+      control: "delete",
+    });
+    expect(sent).toEqual([{ type: "column:delete", columnId: "notes" }]);
+    expect(JSON.parse(result.content[0].text)).toEqual({ deleted: { columnId: "notes" } });
+  });
+
+  it("delete_column rejects an invalid column", async () => {
+    const { sent, byName } = setup(snapshot());
+    const result = await byName("delete_column").execute({ columnId: "nope" });
+
+    expect(result.isError).toBe(true);
+    expect(sent).toEqual([]);
   });
 
   it("set_interaction_mode updates embodiment mode", async () => {
