@@ -100,6 +100,10 @@ export function Board() {
     send({ type: "sort:set", sortByUpvotes: !state.sortByUpvotes });
   };
 
+  const addColumn = () => {
+    send({ type: "column:create", label: "New column" });
+  };
+
   const saveTitle = async () => {
     const trimmed = draftTitle.trim().slice(0, 80);
     if (!trimmed || !retro || trimmed === retro.title) {
@@ -251,6 +255,14 @@ export function Board() {
             {state.sortByUpvotes ? "Manual order" : "Sort by votes"}
           </button>
           <button
+            onClick={addColumn}
+            data-agent-control="add-column"
+            data-agent-prefer-api="create_column"
+            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
+          >
+            + Column
+          </button>
+          <button
             onClick={deleteRetro}
             data-agent-control="delete-retro"
             data-agent-prefer-api="delete_retro"
@@ -282,6 +294,8 @@ export function Board() {
             <Column
               columnId={column.id}
               label={column.label}
+              index={index}
+              columns={state.columns}
               cards={state.getCardsForColumn(column.id)}
               getGroupedCards={state.getGroupedCards}
               getUpvotesForCard={state.getUpvotesForCard}

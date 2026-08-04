@@ -6,7 +6,9 @@ export const DEFAULT_COLUMNS = [
   { id: "notes", label: "Notes", position: 3 },
 ] as const;
 
-export type ColumnId = (typeof DEFAULT_COLUMNS)[number]["id"];
+// Columns are created and removed at runtime, so ColumnId is just a string
+// (not restricted to the default set below).
+export type ColumnId = string;
 export const COLUMNS = DEFAULT_COLUMNS.map((column) => column.id) as ColumnId[];
 
 export interface RetroColumn {
@@ -80,7 +82,10 @@ export type ClientMessage =
   | { type: "card:group"; cardId: string; targetCardId: string }
   | { type: "card:ungroup"; cardId: string }
   | { type: "comment:create"; cardId: string; content: string; id?: string }
+  | { type: "column:create"; label: string; id?: string }
   | { type: "column:update"; columnId: ColumnId; label: string }
+  | { type: "column:move"; columnId: ColumnId; position: number }
+  | { type: "column:delete"; columnId: ColumnId }
   | { type: "blur:set"; blurred: boolean }
   | { type: "sort:set"; sortByUpvotes: boolean }
   | { type: "upvote:toggle"; cardId: string };
@@ -126,7 +131,10 @@ export type ServerMessage =
   | { type: "card:grouped"; cardId: string; groupId: string }
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
   | { type: "comment:created"; comment: CardComment }
+  | { type: "column:created"; column: RetroColumn }
   | { type: "column:updated"; column: RetroColumn }
+  | { type: "column:moved"; column: RetroColumn }
+  | { type: "column:deleted"; columnId: ColumnId }
   | { type: "blur:updated"; blurred: boolean }
   | { type: "sort:updated"; sortByUpvotes: boolean }
   | { type: "upvote:toggled"; cardId: string; upvotes: Upvote[] }
