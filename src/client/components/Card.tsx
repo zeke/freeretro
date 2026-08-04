@@ -153,7 +153,10 @@ export function RetroCard({
 
   const controlBase =
     "text-cf-text-muted hover:text-cf-orange group/tooltip relative inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-full px-2 text-sm transition-all hover:-translate-y-px hover:bg-orange-50 focus-visible:text-cf-orange focus-visible:outline-none";
-  const activeControl = "text-cf-orange";
+  // `!` forces this to win over the always-present `text-cf-text-muted` base
+  // color, which has equal CSS specificity and would otherwise flicker back
+  // to muted once the pointer isn't hovering the control.
+  const activeControl = "!text-cf-orange";
 
   return (
     <div>
@@ -277,7 +280,7 @@ export function RetroCard({
               aria-label={`Upvote card, ${upvotes.length} ${upvotes.length === 1 ? "vote" : "votes"}`}
               className={`${controlBase} ${userUpvoted ? activeControl : ""}`}
             >
-              <UpvoteIcon />
+              <UpvoteIcon filled={userUpvoted} />
               {upvotes.length > 0 && <span>{upvotes.length}</span>}
               <ControlTooltip>Upvote</ControlTooltip>
             </button>
@@ -340,13 +343,22 @@ function ControlTooltip({ children }: { children: string }) {
   );
 }
 
-function UpvoteIcon() {
+function UpvoteIcon({ filled = false }: { filled?: boolean }) {
+  if (filled) {
+    return (
+      <svg viewBox="0 0 20 20" aria-hidden="true" className="h-4 w-4" fill="currentColor">
+        <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 1 1-2.5 0v-7.5ZM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17h-3.192a3 3 0 0 1-1.341-.317l-2.734-1.366A3 3 0 0 0 6.292 15H5V8h.963c.685 0 1.258-.483 1.612-1.068a4.011 4.011 0 0 1 2.166-1.73c.432-.143.79-.475.994-.88.202-.4.283-.855.245-1.322Z" />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
       <path
-        d="M7.5 20H5.8a1.8 1.8 0 0 1-1.8-1.8v-6.4A1.8 1.8 0 0 1 5.8 10h1.7m0 10V9.5l3.6-5.1c.6-.8 1.9-.5 2 .5l.3 3.1h4.1a2.5 2.5 0 0 1 2.4 3.1l-1.4 5.6A4.4 4.4 0 0 1 14.2 20H7.5Z"
+        d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V3a.75.75 0 0 1 .75-.75A2.25 2.25 0 0 1 16.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.5"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
