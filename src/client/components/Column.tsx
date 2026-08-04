@@ -90,6 +90,18 @@ export function Column({
     setIsEditingLabel(false);
   };
 
+  const handleDeleteColumn = () => {
+    if (cards.length > 0) {
+      const confirmed = window.confirm(
+        `Delete "${label}"? This will also delete ${cards.length} card${
+          cards.length === 1 ? "" : "s"
+        }. This can't be undone.`,
+      );
+      if (!confirmed) return;
+    }
+    send({ type: "column:delete", columnId });
+  };
+
   return (
     <div
       ref={columnRef}
