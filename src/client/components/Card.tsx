@@ -277,7 +277,7 @@ export function RetroCard({
               aria-label={`Upvote card, ${upvotes.length} ${upvotes.length === 1 ? "vote" : "votes"}`}
               className={`${controlBase} ${userUpvoted ? activeControl : ""}`}
             >
-              <UpvoteIcon />
+              <UpvoteIcon filled={userUpvoted} />
               {upvotes.length > 0 && <span>{upvotes.length}</span>}
               <ControlTooltip>Upvote</ControlTooltip>
             </button>
@@ -340,9 +340,14 @@ function ControlTooltip({ children }: { children: string }) {
   );
 }
 
-function UpvoteIcon() {
+function UpvoteIcon({ filled = false }: { filled?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill={filled ? "currentColor" : "none"}
+    >
       <path
         d="M7.5 20H5.8a1.8 1.8 0 0 1-1.8-1.8v-6.4A1.8 1.8 0 0 1 5.8 10h1.7m0 10V9.5l3.6-5.1c.6-.8 1.9-.5 2 .5l.3 3.1h4.1a2.5 2.5 0 0 1 2.4 3.1l-1.4 5.6A4.4 4.4 0 0 1 14.2 20H7.5Z"
         stroke="currentColor"
