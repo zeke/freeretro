@@ -105,4 +105,37 @@ describe("API endpoints", () => {
     const res = await SELF.fetch("http://localhost/api/ws/test-room");
     expect(res.status).toBe(426);
   });
+
+  it("GET /retro/:id.json returns a structured snapshot", async () => {
+    const createRes = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Snapshot Retro" }),
+    });
+    const created = (await createRes.json()) as { id: string };
+
+    const res = await SELF.fetch(`http://localhost/retro/${created.id}.json`);
+    expect(res.status).toBe(200);
+    const snapshot = (await res.json()) as {
+      id: string;
+      title: string;
+      columns: { id: string; label: string; cards: unknown[] }[];
+    };
+    expect(snapshot.id).toBe(created.id);
+    expect(snapshot.title).toBe("Snapshot Retro");
+    expect(snapshot.columns.map((column) => column.id)).toEqual([
+      "highlights",
+      "challenges",
+      "questions",
+      "notes",
+    ]);
+    expect(snapshot.columns.every((column) => Array.isArray(column.cards))).toBe(true);
+  });
+
+  it("GET /retro/:id.json returns 404 for a missing retro", async () => {
+    const res = await SELF.fetch(
+      "http://localhost/retro/00000000-0000-4000-8000-000000000000.json",
+    );
+    expect(res.status).toBe(404);
+  });
 });

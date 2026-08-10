@@ -68,6 +68,40 @@ export interface RetroSummary {
   createdBy: string | null;
 }
 
+// Structured JSON export served from /retro/:retroId.json
+export interface RetroSnapshotComment {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: number;
+}
+
+export interface RetroSnapshotCard {
+  id: string;
+  content: string;
+  author: string;
+  position: number;
+  createdAt: number;
+  groupId: string | null;
+  upvotes: number;
+  comments: RetroSnapshotComment[];
+}
+
+export interface RetroSnapshotColumn {
+  id: ColumnId;
+  label: string;
+  position: number;
+  cards: RetroSnapshotCard[];
+}
+
+export interface RetroSnapshot {
+  id: string;
+  title: string;
+  createdAt: number;
+  createdBy: string | null;
+  columns: RetroSnapshotColumn[];
+}
+
 // WebSocket messages: Client → Server
 export type ClientMessage =
   | { type: "join"; name: string }
