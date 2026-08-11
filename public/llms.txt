@@ -48,6 +48,42 @@ DELETE /api/retros/:retroId
 
 Response: { "ok": true }
 
+### Export a retro as JSON
+
+GET /retro/:retroId.json
+
+Returns a structured snapshot of the board without a browser. Response 200:
+
+{
+  "id": "<uuid>",
+  "title": "Sprint 42 Retro",
+  "createdAt": 1234567890000,
+  "createdBy": "agent",
+  "columns": [
+    {
+      "id": "highlights",
+      "label": "Highlights",
+      "position": 0,
+      "cards": [
+        {
+          "id": "<uuid>",
+          "content": "We shipped the launch on time.",
+          "author": "agent",
+          "position": 1,
+          "createdAt": 1234567890000,
+          "groupId": null,
+          "upvotes": 3,
+          "comments": [
+            { "id": "<uuid>", "content": "Nice work", "author": "agent", "createdAt": 1234567890000 }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+Columns are ordered by position; cards within a column are ordered by position. Returns 404 if the retro does not exist.
+
 ### Connect via WebSocket
 
 GET /api/ws/:retroId

@@ -9,6 +9,7 @@ import type {
   ColumnId,
   RetroColumn,
   Upvote,
+  RetroSnapshotColumn,
 } from "./types";
 import { USER_COLORS, DEFAULT_COLUMNS } from "./types";
 
@@ -166,6 +167,50 @@ export class RetroRoom extends DurableObject<Env> {
     this.broadcast({ type: "user:joined", user: { id: userId, name: userName, color } }, server);
 
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Structured board data for the /retro/:retroId.json export. Retro metadata
+  // (title, createdAt) lives in the registry and is merged in by the worker.
+  async getSnapshot(): Promise<RetroSnapshotColumn[]> {
+    const cards = this.getAllCards();
+    const upvotes = this.getAllUpvotes();
+    const comments = this.getAllComments();
+
+    const upvoteCounts = new Map<string, number>();
+    for (const upvote of upvotes) {
+      upvoteCounts.set(upvote.cardId, (upvoteCounts.get(upvote.cardId) ?? 0) + 1);
+    }
+
+    const commentsByCard = new Map<string, RetroSnapshotColumn["cards"][number]["comments"]>();
+    for (const comment of comments) {
+      const list = commentsByCard.get(comment.cardId) ?? [];
+      list.push({
+        id: comment.id,
+        content: comment.content,
+        author: comment.author,
+        createdAt: comment.createdAt,
+      });
+      commentsByCard.set(comment.cardId, list);
+    }
+
+    return this.getColumns().map((column) => ({
+      id: column.id,
+      label: column.label,
+      position: column.position,
+      cards: cards
+        .filter((card) => card.columnId === column.id)
+        .sort((a, b) => a.position - b.position)
+        .map((card) => ({
+          id: card.id,
+          content: card.content,
+          author: card.author,
+          position: card.position,
+          createdAt: card.createdAt,
+          groupId: card.groupId,
+          upvotes: upvoteCounts.get(card.id) ?? 0,
+          comments: commentsByCard.get(card.id) ?? [],
+        })),
+    }));
   }
 
   async deleteAll(): Promise<void> {

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "./env.d";
+import type { RetroSnapshot } from "./types";
 
 export { RetroRegistry } from "./retro-registry";
 export { RetroRoom } from "./retro-room";
@@ -67,6 +68,30 @@ app.delete("/api/retros/:retroId", async (c) => {
   const room = c.env.RETRO_ROOM.get(roomId);
   await room.deleteAll();
   return c.json({ ok: true });
+});
+
+// Structured JSON export of a retro board: /retro/:retroId.json
+app.get("/retro/:file{[0-9a-fA-F-]+\\.json}", async (c) => {
+  const retroId = c.req.param("file").slice(0, -".json".length);
+  const registryId = c.env.RETRO_REGISTRY.idFromName("global");
+  const registry = c.env.RETRO_REGISTRY.get(registryId);
+  const retro = await registry.getRetro(retroId);
+  if (!retro) {
+    return c.json({ error: "Retro not found" }, 404);
+  }
+
+  const roomId = c.env.RETRO_ROOM.idFromName(retroId);
+  const room = c.env.RETRO_ROOM.get(roomId);
+  const columns = await room.getSnapshot();
+
+  const snapshot: RetroSnapshot = {
+    id: retro.id,
+    title: retro.title,
+    createdAt: retro.createdAt,
+    createdBy: retro.createdBy,
+    columns,
+  };
+  return c.json(snapshot);
 });
 
 // WebSocket: Connect to a retro room
