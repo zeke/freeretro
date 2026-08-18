@@ -7,6 +7,7 @@ import { useAgentTools } from "../hooks/useAgentTools";
 import { useDemoSwarm } from "../hooks/useDemoSwarm";
 import { Column } from "../components/Column";
 import { CursorOverlay } from "../components/CursorOverlay";
+import { HeaderMenu } from "../components/HeaderMenu";
 import { NamePrompt } from "../components/NamePrompt";
 import { Footer } from "../components/Footer";
 import type { RetroSummary } from "../../types";
@@ -96,8 +97,8 @@ export function Board() {
     send({ type: "blur:set", blurred: !state.blurred });
   };
 
-  const toggleSort = () => {
-    send({ type: "sort:set", sortByUpvotes: !state.sortByUpvotes });
+  const toggleSort = (sortByUpvotes: boolean) => {
+    send({ type: "sort:set", sortByUpvotes });
   };
 
   const addColumn = () => {
@@ -231,45 +232,17 @@ export function Board() {
             </span>
           </div>
 
-          <button
-            onClick={copyLink}
-            data-agent-control="share"
-            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
-          >
-            {copiedLink ? "Copied!" : "Share link"}
-          </button>
-          <button
-            onClick={toggleBlur}
-            data-agent-control="blur"
-            data-agent-prefer-api="set_blur"
-            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
-          >
-            {state.blurred ? "Show cards" : "Blur cards"}
-          </button>
-          <button
-            onClick={toggleSort}
-            data-agent-control="sort"
-            data-agent-prefer-api="set_sort"
-            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
-          >
-            {state.sortByUpvotes ? "Manual order" : "Sort by votes"}
-          </button>
-          <button
-            onClick={addColumn}
-            data-agent-control="add-column"
-            data-agent-prefer-api="create_column"
-            className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange rounded-full border px-4 py-1.5 text-sm transition-all"
-          >
-            + Column
-          </button>
-          <button
-            onClick={deleteRetro}
-            data-agent-control="delete-retro"
-            data-agent-prefer-api="delete_retro"
-            className="border-cf-border text-cf-text-muted rounded-full border px-4 py-1.5 text-sm transition-all hover:border-red-400 hover:text-red-500"
-          >
-            Delete
-          </button>
+          <HeaderMenu
+            retroId={retroId!}
+            blurred={state.blurred}
+            sortByUpvotes={state.sortByUpvotes}
+            copiedLink={copiedLink}
+            onShare={copyLink}
+            onToggleBlur={toggleBlur}
+            onToggleSort={toggleSort}
+            onAddColumn={addColumn}
+            onDelete={deleteRetro}
+          />
         </div>
       </header>
 
@@ -323,7 +296,6 @@ export function Board() {
           Demo mode
         </div>
       )}
-      <Footer />
     </div>
   );
 }
