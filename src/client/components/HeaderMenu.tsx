@@ -46,6 +46,22 @@ export function HeaderMenu({
 
   const menuItemClass =
     "text-cf-text w-full rounded px-3 py-2 text-left text-sm transition-colors hover:bg-cf-bg-page";
+  const toggleItemClass = `${menuItemClass} flex items-center justify-between gap-3`;
+
+  const renderSwitch = (checked: boolean) => (
+    <span
+      aria-hidden="true"
+      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+        checked ? "bg-cf-orange" : "bg-cf-border"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          checked ? "translate-x-4" : "translate-x-0.5"
+        }`}
+      />
+    </span>
+  );
 
   return (
     <div ref={menuRef} className="relative">
@@ -77,7 +93,7 @@ export function HeaderMenu({
       {open && (
         <div
           role="menu"
-          className="border-cf-border bg-cf-bg-card absolute right-0 z-10 mt-2 flex w-48 flex-col gap-0.5 rounded-lg border p-1.5 shadow-lg"
+          className="border-cf-border bg-cf-bg-card absolute right-0 z-50 mt-2 flex w-52 flex-col gap-0.5 rounded-lg border p-1.5 shadow-lg"
         >
           <button
             type="button"
@@ -88,33 +104,35 @@ export function HeaderMenu({
             data-agent-control="share"
             className={menuItemClass}
           >
-            {copiedLink ? "Copied!" : "Share link"}
+            {copiedLink ? "Copied to clipboard!" : "Copy link"}
           </button>
           <button
             type="button"
-            role="menuitem"
+            role="menuitemcheckbox"
+            aria-checked={blurred}
             onClick={() => {
               onToggleBlur();
-              setOpen(false);
             }}
             data-agent-control="blur"
             data-agent-prefer-api="set_blur"
-            className={menuItemClass}
+            className={toggleItemClass}
           >
-            {blurred ? "Show cards" : "Blur cards"}
+            Blur cards
+            {renderSwitch(blurred)}
           </button>
           <button
             type="button"
-            role="menuitem"
+            role="menuitemcheckbox"
+            aria-checked={sortByUpvotes}
             onClick={() => {
               onToggleSort();
-              setOpen(false);
             }}
             data-agent-control="sort"
             data-agent-prefer-api="set_sort"
-            className={menuItemClass}
+            className={toggleItemClass}
           >
-            {sortByUpvotes ? "Manual order" : "Sort by votes"}
+            Sort by votes
+            {renderSwitch(sortByUpvotes)}
           </button>
           <button
             type="button"
@@ -127,7 +145,7 @@ export function HeaderMenu({
             data-agent-prefer-api="create_column"
             className={menuItemClass}
           >
-            + Column
+            New column
           </button>
           <div className="border-cf-border my-1 border-t" />
           <button
