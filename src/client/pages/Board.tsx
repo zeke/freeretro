@@ -97,8 +97,8 @@ export function Board() {
     send({ type: "blur:set", blurred: !state.blurred });
   };
 
-  const toggleSort = () => {
-    send({ type: "sort:set", sortByUpvotes: !state.sortByUpvotes });
+  const toggleSort = (sortByUpvotes: boolean) => {
+    send({ type: "sort:set", sortByUpvotes });
   };
 
   const addColumn = () => {
@@ -295,7 +295,6 @@ export function Board() {
           Demo mode
         </div>
       )}
-      <Footer />
     </div>
   );
 }

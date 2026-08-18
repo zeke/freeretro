@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 interface HeaderMenuProps {
   blurred: boolean;
@@ -6,7 +7,7 @@ interface HeaderMenuProps {
   copiedLink: boolean;
   onShare: () => void;
   onToggleBlur: () => void;
-  onToggleSort: () => void;
+  onToggleSort: (sortByUpvotes: boolean) => void;
   onAddColumn: () => void;
   onDelete: () => void;
 }
@@ -72,7 +73,7 @@ export function HeaderMenu({
         aria-expanded={open}
         aria-label="Board menu"
         data-agent-control="menu"
-        className="border-cf-border text-cf-text-muted hover:border-cf-orange hover:text-cf-orange flex h-9 w-9 items-center justify-center rounded-full border transition-all"
+        className="text-cf-text-muted hover:text-cf-orange flex h-9 w-9 items-center justify-center rounded-full transition-all"
       >
         <span className="sr-only">Board menu</span>
         <svg
@@ -120,20 +121,20 @@ export function HeaderMenu({
             Blur cards
             {renderSwitch(blurred)}
           </button>
-          <button
-            type="button"
-            role="menuitemcheckbox"
-            aria-checked={sortByUpvotes}
-            onClick={() => {
-              onToggleSort();
-            }}
-            data-agent-control="sort"
-            data-agent-prefer-api="set_sort"
-            className={toggleItemClass}
-          >
-            Sort by votes
-            {renderSwitch(sortByUpvotes)}
-          </button>
+          <div className={`${menuItemClass} flex items-center justify-between gap-3`}>
+            <label htmlFor="sort-order">Sort</label>
+            <select
+              id="sort-order"
+              value={sortByUpvotes ? "votes" : "manual"}
+              onChange={(event) => onToggleSort(event.target.value === "votes")}
+              data-agent-control="sort"
+              data-agent-prefer-api="set_sort"
+              className="border-cf-border bg-cf-bg-page text-cf-text rounded border px-2 py-1 text-sm outline-none"
+            >
+              <option value="manual">Manual order</option>
+              <option value="votes">By votes</option>
+            </select>
+          </div>
           <button
             type="button"
             role="menuitem"
@@ -161,6 +162,13 @@ export function HeaderMenu({
           >
             Delete board
           </button>
+          <div className="border-cf-border my-1 border-t" />
+          <a href="https://github.com/zeke/freeretro" className={menuItemClass}>
+            GitHub repo
+          </a>
+          <Link to="/about" className={menuItemClass}>
+            About
+          </Link>
         </div>
       )}
     </div>
