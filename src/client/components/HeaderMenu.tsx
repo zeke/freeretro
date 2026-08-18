@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 interface HeaderMenuProps {
+  retroId: string;
   blurred: boolean;
   sortByUpvotes: boolean;
   copiedLink: boolean;
@@ -13,6 +14,7 @@ interface HeaderMenuProps {
 }
 
 export function HeaderMenu({
+  retroId,
   blurred,
   sortByUpvotes,
   copiedLink,
@@ -96,31 +98,6 @@ export function HeaderMenu({
           role="menu"
           className="border-cf-border bg-cf-bg-card absolute right-0 z-50 mt-2 flex w-52 flex-col gap-0.5 rounded-lg border p-1.5 shadow-lg"
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onShare();
-            }}
-            data-agent-control="share"
-            className={menuItemClass}
-          >
-            {copiedLink ? "Copied to clipboard!" : "Copy link"}
-          </button>
-          <button
-            type="button"
-            role="menuitemcheckbox"
-            aria-checked={blurred}
-            onClick={() => {
-              onToggleBlur();
-            }}
-            data-agent-control="blur"
-            data-agent-prefer-api="set_blur"
-            className={toggleItemClass}
-          >
-            Blur cards
-            {renderSwitch(blurred)}
-          </button>
           <div className={`${menuItemClass} flex items-center justify-between gap-3`}>
             <label htmlFor="sort-order">Sort</label>
             <select
@@ -137,6 +114,20 @@ export function HeaderMenu({
           </div>
           <button
             type="button"
+            role="menuitemcheckbox"
+            aria-checked={blurred}
+            onClick={() => {
+              onToggleBlur();
+            }}
+            data-agent-control="blur"
+            data-agent-prefer-api="set_blur"
+            className={toggleItemClass}
+          >
+            Blur cards
+            {renderSwitch(blurred)}
+          </button>
+          <button
+            type="button"
             role="menuitem"
             onClick={() => {
               onAddColumn();
@@ -146,9 +137,29 @@ export function HeaderMenu({
             data-agent-prefer-api="create_column"
             className={menuItemClass}
           >
-            New column
+            Add column
           </button>
           <div className="border-cf-border my-1 border-t" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onShare();
+            }}
+            data-agent-control="share"
+            className={menuItemClass}
+          >
+            {copiedLink ? "Copied to clipboard!" : "Share board"}
+          </button>
+          <a
+            href={`/retro/${retroId}.json`}
+            target="_blank"
+            rel="noreferrer"
+            data-agent-control="view-json"
+            className={menuItemClass}
+          >
+            View board JSON
+          </a>
           <button
             type="button"
             role="menuitem"

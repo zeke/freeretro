@@ -233,6 +233,7 @@ export function Board() {
           </div>
 
           <HeaderMenu
+            retroId={retroId!}
             blurred={state.blurred}
             sortByUpvotes={state.sortByUpvotes}
             copiedLink={copiedLink}
