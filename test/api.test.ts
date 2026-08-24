@@ -1,5 +1,6 @@
-import { SELF } from "cloudflare:test";
+import { SELF, env } from "cloudflare:test";
 import { describe, it, expect } from "vitest";
+import { DEFAULT_COLUMNS } from "../src/types";
 
 describe("API endpoints", () => {
   it("does not expose a retro listing", async () => {
@@ -136,6 +137,95 @@ describe("API endpoints", () => {
       "notes",
     ]);
     expect(snapshot.columns.every((column) => column.cards.length === 0)).toBe(true);
+  });
+
+  it("POST /api/retros/:retroId/copy accepts a custom title", async () => {
+    const createRes = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Sprint 42 Retro" }),
+    });
+    const source = (await createRes.json()) as { id: string };
+
+    const copyRes = await SELF.fetch(`http://localhost/api/retros/${source.id}/copy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Custom Copy Title" }),
+    });
+    expect(copyRes.status).toBe(201);
+    const copy = (await copyRes.json()) as { title: string };
+    expect(copy.title).toBe("Custom Copy Title");
+  });
+
+  it("POST /api/retros/:retroId/copy only carries over cards when includeCards is true", async () => {
+    const createRes = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Retro With Cards" }),
+    });
+    const source = (await createRes.json()) as { id: string };
+
+    const sourceRoomId = env.RETRO_ROOM.idFromName(source.id);
+    const sourceRoom = env.RETRO_ROOM.get(sourceRoomId);
+    await sourceRoom.importState({
+      columns: DEFAULT_COLUMNS.map((column) => ({ ...column })),
+      cards: [
+        {
+          id: "card-1",
+          columnId: "highlights",
+          content: "We shipped on time",
+          author: "Alice",
+          authorId: "user-1",
+          groupId: null,
+          position: 0,
+          createdAt: Date.now(),
+        },
+      ],
+      upvotes: [{ cardId: "card-1", userId: "user-2" }],
+      comments: [
+        {
+          id: "comment-1",
+          cardId: "card-1",
+          content: "Nice work",
+          author: "Bob",
+          authorId: "user-3",
+          createdAt: Date.now(),
+        },
+      ],
+    });
+
+    // Without includeCards, cards are not carried over.
+    const withoutCardsRes = await SELF.fetch(`http://localhost/api/retros/${source.id}/copy`, {
+      method: "POST",
+    });
+    const withoutCards = (await withoutCardsRes.json()) as { id: string };
+    const withoutCardsSnapshot = (await (
+      await SELF.fetch(`http://localhost/retro/${withoutCards.id}.json`)
+    ).json()) as { columns: { cards: unknown[] }[] };
+    expect(withoutCardsSnapshot.columns.every((column) => column.cards.length === 0)).toBe(true);
+
+    // With includeCards, cards, upvotes, and comments are carried over.
+    const withCardsRes = await SELF.fetch(`http://localhost/api/retros/${source.id}/copy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ includeCards: true }),
+    });
+    const withCards = (await withCardsRes.json()) as { id: string };
+    const withCardsSnapshot = (await (
+      await SELF.fetch(`http://localhost/retro/${withCards.id}.json`)
+    ).json()) as {
+      columns: {
+        id: string;
+        cards: { content: string; upvotes: number; comments: { content: string }[] }[];
+      }[];
+    };
+    const highlights = withCardsSnapshot.columns.find((column) => column.id === "highlights");
+    expect(highlights?.cards).toHaveLength(1);
+    expect(highlights?.cards[0]?.content).toBe("We shipped on time");
+    expect(highlights?.cards[0]?.upvotes).toBe(1);
+    expect(highlights?.cards[0]?.comments).toEqual([
+      expect.objectContaining({ content: "Nice work", author: "Bob" }),
+    ]);
   });
 
   it("POST /api/retros/:retroId/copy returns 404 for a missing retro", async () => {

@@ -41,9 +41,11 @@ app.get("/api/retros/:retroId", async (c) => {
   return c.json(retro);
 });
 
-// API: Copy a retro (columns only; cards are not carried over)
+// API: Copy a retro. Columns are always carried over; cards are optional
+// (default: not carried over).
 app.post("/api/retros/:retroId/copy", async (c) => {
   const retroId = c.req.param("retroId");
+  const body = await c.req.json<{ title?: string; includeCards?: boolean }>().catch(() => ({}));
   const registryId = c.env.RETRO_REGISTRY.idFromName("global");
   const registry = c.env.RETRO_REGISTRY.get(registryId);
 
@@ -52,24 +54,23 @@ app.post("/api/retros/:retroId/copy", async (c) => {
     return c.json({ error: "Retro not found" }, 404);
   }
 
+  const title = body.title?.trim() || `${source.title} (copy)`;
+
   const sourceRoomId = c.env.RETRO_ROOM.idFromName(retroId);
   const sourceRoom = c.env.RETRO_ROOM.get(sourceRoomId);
-  const columns = (await sourceRoom.getSnapshot()).map(({ id, label, position }) => ({
-    id,
-    label,
-    position,
-  }));
+  const state = await sourceRoom.getRawState();
 
   const newRetroId = crypto.randomUUID();
-  const newRetro = await registry.createRetro(
-    newRetroId,
-    `${source.title} (copy)`,
-    source.createdBy,
-  );
+  const newRetro = await registry.createRetro(newRetroId, title, source.createdBy);
 
   const newRoomId = c.env.RETRO_ROOM.idFromName(newRetroId);
   const newRoom = c.env.RETRO_ROOM.get(newRoomId);
-  await newRoom.importColumns(columns);
+  await newRoom.importState({
+    columns: state.columns,
+    cards: body.includeCards ? state.cards : [],
+    upvotes: body.includeCards ? state.upvotes : [],
+    comments: body.includeCards ? state.comments : [],
+  });
 
   return c.json(newRetro, 201);
 });

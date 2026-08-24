@@ -213,16 +213,73 @@ export class RetroRoom extends DurableObject<Env> {
     }));
   }
 
-  // Replaces this room's columns with the given set, used when seeding a new
-  // room as a copy of an existing retro. Cards are not carried over.
-  async importColumns(columns: RetroColumn[]): Promise<void> {
+  // Raw board data used when copying a retro. Unlike getSnapshot(), upvotes
+  // and comments are returned in full (not aggregated) so they can be
+  // reproduced exactly in a new room.
+  async getRawState(): Promise<{
+    columns: RetroColumn[];
+    cards: Card[];
+    upvotes: Upvote[];
+    comments: CardComment[];
+  }> {
+    return {
+      columns: this.getColumns(),
+      cards: this.getAllCards(),
+      upvotes: this.getAllUpvotes(),
+      comments: this.getAllComments(),
+    };
+  }
+
+  // Seeds this room from another room's raw state, used when copying a
+  // retro. Columns are always copied; cards, upvotes, and comments are
+  // included only when the caller wants a full copy.
+  async importState(data: {
+    columns: RetroColumn[];
+    cards: Card[];
+    upvotes: Upvote[];
+    comments: CardComment[];
+  }): Promise<void> {
     this.ctx.storage.sql.exec("DELETE FROM retro_columns");
-    for (const column of columns) {
+    for (const column of data.columns) {
       this.ctx.storage.sql.exec(
         "INSERT INTO retro_columns (id, label, position) VALUES (?, ?, ?)",
         column.id,
         column.label,
         column.position,
+      );
+    }
+
+    for (const card of data.cards) {
+      this.ctx.storage.sql.exec(
+        "INSERT INTO cards (id, column_id, content, author, author_id, group_id, position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        card.id,
+        card.columnId,
+        card.content,
+        card.author,
+        card.authorId,
+        card.groupId,
+        card.position,
+        card.createdAt,
+      );
+    }
+
+    for (const upvote of data.upvotes) {
+      this.ctx.storage.sql.exec(
+        "INSERT INTO upvotes (card_id, user_id) VALUES (?, ?)",
+        upvote.cardId,
+        upvote.userId,
+      );
+    }
+
+    for (const comment of data.comments) {
+      this.ctx.storage.sql.exec(
+        "INSERT INTO card_comments (id, card_id, content, author, author_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        comment.id,
+        comment.cardId,
+        comment.content,
+        comment.author,
+        comment.authorId,
+        comment.createdAt,
       );
     }
   }

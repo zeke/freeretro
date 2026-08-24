@@ -6,6 +6,7 @@ import { useCursors } from "../hooks/useCursors";
 import { useAgentTools } from "../hooks/useAgentTools";
 import { useDemoSwarm } from "../hooks/useDemoSwarm";
 import { Column } from "../components/Column";
+import { CopyRetroModal } from "../components/CopyRetroModal";
 import { CursorOverlay } from "../components/CursorOverlay";
 import { HeaderMenu } from "../components/HeaderMenu";
 import { NamePrompt } from "../components/NamePrompt";
@@ -27,6 +28,8 @@ export function Board() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   const { send, subscribe, connected, userId } = useWebSocket(retroId!, name);
   const state = useRetroState(subscribe);
@@ -128,9 +131,18 @@ export function Board() {
     setIsEditingTitle(false);
   };
 
-  const copyRetro = async () => {
-    const res = await fetch(`/api/retros/${retroId}/copy`, { method: "POST" });
-    if (!res.ok) return;
+  const copyRetro = async (options: { title: string; includeCards: boolean }) => {
+    setCopying(true);
+    const res = await fetch(`/api/retros/${retroId}/copy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(options),
+    });
+
+    if (!res.ok) {
+      setCopying(false);
+      return;
+    }
 
     const newRetro = (await res.json()) as RetroSummary;
     saveLocalRetro(newRetro);
@@ -250,7 +262,7 @@ export function Board() {
             onToggleBlur={toggleBlur}
             onToggleSort={toggleSort}
             onAddColumn={addColumn}
-            onCopy={copyRetro}
+            onCopy={() => setShowCopyModal(true)}
             onDelete={deleteRetro}
           />
         </div>
@@ -300,6 +312,15 @@ export function Board() {
           boardRef={boardRef}
         />
       </div>
+      {showCopyModal && retro && (
+        <CopyRetroModal
+          defaultTitle={`${retro.title} (copy)`}
+          columnLabels={state.columns.map((column) => column.label)}
+          copying={copying}
+          onCancel={() => setShowCopyModal(false)}
+          onConfirm={copyRetro}
+        />
+      )}
       {demoActive && (
         <div className="border-cf-orange bg-cf-bg-card text-cf-orange fixed bottom-4 left-4 z-[10000] flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm">
           <span className="bg-cf-orange inline-block h-2 w-2 animate-pulse rounded-full" />
