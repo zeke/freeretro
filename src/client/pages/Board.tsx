@@ -146,6 +146,8 @@ export function Board() {
 
     const newRetro = (await res.json()) as RetroSummary;
     saveLocalRetro(newRetro);
+    setShowCopyModal(false);
+    setCopying(false);
     navigate(`/retro/${newRetro.id}`);
   };
 
