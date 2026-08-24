@@ -213,6 +213,20 @@ export class RetroRoom extends DurableObject<Env> {
     }));
   }
 
+  // Replaces this room's columns with the given set, used when seeding a new
+  // room as a copy of an existing retro. Cards are not carried over.
+  async importColumns(columns: RetroColumn[]): Promise<void> {
+    this.ctx.storage.sql.exec("DELETE FROM retro_columns");
+    for (const column of columns) {
+      this.ctx.storage.sql.exec(
+        "INSERT INTO retro_columns (id, label, position) VALUES (?, ?, ?)",
+        column.id,
+        column.label,
+        column.position,
+      );
+    }
+  }
+
   async deleteAll(): Promise<void> {
     this.broadcast({ type: "retro:deleted" });
 

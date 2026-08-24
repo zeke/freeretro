@@ -101,6 +101,51 @@ describe("API endpoints", () => {
     expect(getRes.status).toBe(404);
   });
 
+  it("POST /api/retros/:retroId/copy duplicates columns and appends '(copy)' to the title", async () => {
+    const createRes = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Sprint 42 Retro", createdBy: "Alice" }),
+    });
+    const source = (await createRes.json()) as { id: string };
+
+    const copyRes = await SELF.fetch(`http://localhost/api/retros/${source.id}/copy`, {
+      method: "POST",
+    });
+    expect(copyRes.status).toBe(201);
+    const copy = (await copyRes.json()) as {
+      id: string;
+      title: string;
+      createdBy: string | null;
+    };
+    expect(copy.title).toBe("Sprint 42 Retro (copy)");
+    expect(copy.createdBy).toBe("Alice");
+    expect(copy.id).not.toBe(source.id);
+    expect(copy.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+
+    const snapshotRes = await SELF.fetch(`http://localhost/retro/${copy.id}.json`);
+    const snapshot = (await snapshotRes.json()) as {
+      columns: { id: string; label: string; cards: unknown[] }[];
+    };
+    expect(snapshot.columns.map((column) => column.id)).toEqual([
+      "highlights",
+      "challenges",
+      "questions",
+      "notes",
+    ]);
+    expect(snapshot.columns.every((column) => column.cards.length === 0)).toBe(true);
+  });
+
+  it("POST /api/retros/:retroId/copy returns 404 for a missing retro", async () => {
+    const res = await SELF.fetch(
+      "http://localhost/api/retros/00000000-0000-4000-8000-000000000000/copy",
+      { method: "POST" },
+    );
+    expect(res.status).toBe(404);
+  });
+
   it("GET /api/ws/:retroId without upgrade header returns 426", async () => {
     const res = await SELF.fetch("http://localhost/api/ws/test-room");
     expect(res.status).toBe(426);

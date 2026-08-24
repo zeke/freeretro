@@ -128,6 +128,15 @@ export function Board() {
     setIsEditingTitle(false);
   };
 
+  const copyRetro = async () => {
+    const res = await fetch(`/api/retros/${retroId}/copy`, { method: "POST" });
+    if (!res.ok) return;
+
+    const newRetro = (await res.json()) as RetroSummary;
+    saveLocalRetro(newRetro);
+    navigate(`/retro/${newRetro.id}`);
+  };
+
   const deleteRetro = async () => {
     const confirmed = window.confirm("Delete this retro forever? This can't be undone.");
     if (!confirmed) return;
@@ -241,6 +250,7 @@ export function Board() {
             onToggleBlur={toggleBlur}
             onToggleSort={toggleSort}
             onAddColumn={addColumn}
+            onCopy={copyRetro}
             onDelete={deleteRetro}
           />
         </div>

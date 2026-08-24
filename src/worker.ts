@@ -41,6 +41,39 @@ app.get("/api/retros/:retroId", async (c) => {
   return c.json(retro);
 });
 
+// API: Copy a retro (columns only; cards are not carried over)
+app.post("/api/retros/:retroId/copy", async (c) => {
+  const retroId = c.req.param("retroId");
+  const registryId = c.env.RETRO_REGISTRY.idFromName("global");
+  const registry = c.env.RETRO_REGISTRY.get(registryId);
+
+  const source = await registry.getRetro(retroId);
+  if (!source) {
+    return c.json({ error: "Retro not found" }, 404);
+  }
+
+  const sourceRoomId = c.env.RETRO_ROOM.idFromName(retroId);
+  const sourceRoom = c.env.RETRO_ROOM.get(sourceRoomId);
+  const columns = (await sourceRoom.getSnapshot()).map(({ id, label, position }) => ({
+    id,
+    label,
+    position,
+  }));
+
+  const newRetroId = crypto.randomUUID();
+  const newRetro = await registry.createRetro(
+    newRetroId,
+    `${source.title} (copy)`,
+    source.createdBy,
+  );
+
+  const newRoomId = c.env.RETRO_ROOM.idFromName(newRetroId);
+  const newRoom = c.env.RETRO_ROOM.get(newRoomId);
+  await newRoom.importColumns(columns);
+
+  return c.json(newRetro, 201);
+});
+
 // API: Rename a retro
 app.put("/api/retros/:retroId", async (c) => {
   const body = await c.req.json<{ title: string }>();
