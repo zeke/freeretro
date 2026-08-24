@@ -42,6 +42,21 @@ Content-Type: application/json
 
 { "title": "New Title" }
 
+### Copy a retro
+
+POST /api/retros/:retroId/copy
+Content-Type: application/json
+
+{ "title": "New Title", "includeCards": false }
+
+Creates a new unlisted retro with the same columns (labels and order) as the
+source retro. Both fields are optional: `title` defaults to "<source title>
+(copy)", and `includeCards` (default false) controls whether cards, upvotes,
+and comments are also duplicated.
+
+Response 201: RetroSummary object for the new retro, or 404 if the source
+retro does not exist.
+
 ### Delete a retro
 
 DELETE /api/retros/:retroId

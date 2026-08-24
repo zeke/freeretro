@@ -10,6 +10,7 @@ interface HeaderMenuProps {
   onToggleBlur: () => void;
   onToggleSort: (sortByUpvotes: boolean) => void;
   onAddColumn: () => void;
+  onCopy: () => void;
   onDelete: () => void;
 }
 
@@ -22,6 +23,7 @@ export function HeaderMenu({
   onToggleBlur,
   onToggleSort,
   onAddColumn,
+  onCopy,
   onDelete,
 }: HeaderMenuProps) {
   const [open, setOpen] = useState(false);
@@ -160,6 +162,19 @@ export function HeaderMenu({
           >
             View board JSON
           </a>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onCopy();
+              setOpen(false);
+            }}
+            data-agent-control="copy-retro"
+            data-agent-prefer-api="copy_retro"
+            className={menuItemClass}
+          >
+            Duplicate board
+          </button>
           <button
             type="button"
             role="menuitem"
