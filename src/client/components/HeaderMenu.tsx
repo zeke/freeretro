@@ -5,9 +5,11 @@ interface HeaderMenuProps {
   retroId: string;
   blurred: boolean;
   sortByUpvotes: boolean;
+  showPointers: boolean;
   copiedLink: boolean;
   onShare: () => void;
   onToggleBlur: () => void;
+  onToggleShowPointers: () => void;
   onToggleSort: (sortByUpvotes: boolean) => void;
   onAddColumn: () => void;
   onCopy: () => void;
@@ -18,9 +20,11 @@ export function HeaderMenu({
   retroId,
   blurred,
   sortByUpvotes,
+  showPointers,
   copiedLink,
   onShare,
   onToggleBlur,
+  onToggleShowPointers,
   onToggleSort,
   onAddColumn,
   onCopy,
@@ -127,6 +131,19 @@ export function HeaderMenu({
           >
             Blur cards
             {renderSwitch(blurred)}
+          </button>
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={showPointers}
+            onClick={() => {
+              onToggleShowPointers();
+            }}
+            data-agent-control="show-pointers"
+            className={toggleItemClass}
+          >
+            Show pointers
+            {renderSwitch(showPointers)}
           </button>
           <button
             type="button"

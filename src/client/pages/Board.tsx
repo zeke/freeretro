@@ -30,6 +30,9 @@ export function Board() {
   const [notFound, setNotFound] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [showPointers, setShowPointers] = useState(
+    () => localStorage.getItem("retro-show-pointers") !== "false",
+  );
 
   const { send, subscribe, connected, userId } = useWebSocket(retroId!, name);
   const state = useRetroState(subscribe);
@@ -98,6 +101,14 @@ export function Board() {
 
   const toggleBlur = () => {
     send({ type: "blur:set", blurred: !state.blurred });
+  };
+
+  const toggleShowPointers = () => {
+    setShowPointers((value) => {
+      const next = !value;
+      localStorage.setItem("retro-show-pointers", String(next));
+      return next;
+    });
   };
 
   const toggleSort = (sortByUpvotes: boolean) => {
@@ -259,9 +270,11 @@ export function Board() {
             retroId={retroId!}
             blurred={state.blurred}
             sortByUpvotes={state.sortByUpvotes}
+            showPointers={showPointers}
             copiedLink={copiedLink}
             onShare={copyLink}
             onToggleBlur={toggleBlur}
+            onToggleShowPointers={toggleShowPointers}
             onToggleSort={toggleSort}
             onAddColumn={addColumn}
             onCopy={() => setShowCopyModal(true)}
@@ -306,13 +319,15 @@ export function Board() {
             />
           </div>
         ))}
-        <CursorOverlay
-          cursors={cursors}
-          clicks={clicks}
-          drags={drags}
-          cards={state.cards}
-          boardRef={boardRef}
-        />
+        {showPointers && (
+          <CursorOverlay
+            cursors={cursors}
+            clicks={clicks}
+            drags={drags}
+            cards={state.cards}
+            boardRef={boardRef}
+          />
+        )}
       </div>
       {showCopyModal && retro && (
         <CopyRetroModal
