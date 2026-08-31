@@ -140,6 +140,20 @@ describe("agent tools", () => {
     ]);
   });
 
+  it("edit_comment sends a trimmed comment:update", async () => {
+    const { sent, byName } = setup(snapshot());
+    const result = await byName("edit_comment").execute({
+      commentId: "c1",
+      content: "  fixed typo  ",
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(JSON.parse(result.content[0].text)).toEqual({
+      comment: { id: "c1", content: "fixed typo" },
+    });
+    expect(sent).toEqual([{ type: "comment:update", commentId: "c1", content: "fixed typo" }]);
+  });
+
   it("list_cards reports upvote counts and comments", async () => {
     const state = snapshot({
       cards: [

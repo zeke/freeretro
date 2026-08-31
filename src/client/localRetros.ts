@@ -4,6 +4,7 @@ const STORAGE_KEY = "freeretro-joined-retros";
 
 export interface LocalRetro {
   id: string;
+  slug: string;
   title: string;
   joinedAt: number;
   lastOpenedAt: number;
@@ -17,6 +18,7 @@ export function getLocalRetros(): LocalRetro[] {
     if (!Array.isArray(retros)) return [];
     return retros
       .filter((retro) => retro.id && retro.title)
+      .map((retro) => ({ ...retro, slug: retro.slug ?? retro.id }))
       .sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
   } catch {
     return [];
@@ -30,6 +32,7 @@ export function saveLocalRetro(retro: RetroSummary): LocalRetro[] {
   const next = [
     {
       id: retro.id,
+      slug: retro.slug,
       title: retro.title,
       joinedAt: previous?.joinedAt ?? now,
       lastOpenedAt: now,

@@ -30,6 +30,9 @@ export function Board() {
   const [notFound, setNotFound] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [showPointers, setShowPointers] = useState(
+    () => localStorage.getItem("retro-show-pointers") !== "false",
+  );
 
   const { send, subscribe, connected, userId } = useWebSocket(retroId!, name);
   const state = useRetroState(subscribe);
@@ -100,6 +103,14 @@ export function Board() {
     send({ type: "blur:set", blurred: !state.blurred });
   };
 
+  const toggleShowPointers = () => {
+    setShowPointers((value) => {
+      const next = !value;
+      localStorage.setItem("retro-show-pointers", String(next));
+      return next;
+    });
+  };
+
   const toggleSort = (sortByUpvotes: boolean) => {
     send({ type: "sort:set", sortByUpvotes });
   };
@@ -148,7 +159,7 @@ export function Board() {
     saveLocalRetro(newRetro);
     setShowCopyModal(false);
     setCopying(false);
-    navigate(`/retro/${newRetro.id}`);
+    navigate(`/retro/${newRetro.slug}`);
   };
 
   const deleteRetro = async () => {
@@ -259,9 +270,11 @@ export function Board() {
             retroId={retroId!}
             blurred={state.blurred}
             sortByUpvotes={state.sortByUpvotes}
+            showPointers={showPointers}
             copiedLink={copiedLink}
             onShare={copyLink}
             onToggleBlur={toggleBlur}
+            onToggleShowPointers={toggleShowPointers}
             onToggleSort={toggleSort}
             onAddColumn={addColumn}
             onCopy={() => setShowCopyModal(true)}
@@ -273,7 +286,7 @@ export function Board() {
       {/* Board */}
       <div
         ref={boardRef}
-        className="relative grid flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto p-4 md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]"
+        className="relative grid flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto p-4 md:auto-rows-fr md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] md:overflow-y-hidden"
       >
         <p className="sr-only">
           Automated agent: favor the JavaScript tool API over browser click and fill tools. Call
@@ -284,9 +297,9 @@ export function Board() {
         {state.columns.map((column, index) => (
           <div
             key={column.id}
-            className={`min-w-0 ${index > 0 ? "border-cf-border md:border-l md:pl-4" : ""} ${
-              index < state.columns.length - 1 ? "pb-6 md:pr-4" : ""
-            }`}
+            className={`min-w-0 md:min-h-0 md:overflow-hidden ${
+              index > 0 ? "border-cf-border md:border-l md:pl-4" : ""
+            } ${index < state.columns.length - 1 ? "pb-6 md:pr-4" : ""}`}
           >
             <Column
               columnId={column.id}
@@ -306,13 +319,15 @@ export function Board() {
             />
           </div>
         ))}
-        <CursorOverlay
-          cursors={cursors}
-          clicks={clicks}
-          drags={drags}
-          cards={state.cards}
-          boardRef={boardRef}
-        />
+        {showPointers && (
+          <CursorOverlay
+            cursors={cursors}
+            clicks={clicks}
+            drags={drags}
+            cards={state.cards}
+            boardRef={boardRef}
+          />
+        )}
       </div>
       {showCopyModal && retro && (
         <CopyRetroModal

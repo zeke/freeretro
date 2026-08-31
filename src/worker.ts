@@ -56,7 +56,7 @@ app.post("/api/retros/:retroId/copy", async (c) => {
 
   const title = body.title?.trim() || `${source.title} (copy)`;
 
-  const sourceRoomId = c.env.RETRO_ROOM.idFromName(retroId);
+  const sourceRoomId = c.env.RETRO_ROOM.idFromName(source.id);
   const sourceRoom = c.env.RETRO_ROOM.get(sourceRoomId);
   const state = await sourceRoom.getRawState();
 
@@ -85,7 +85,11 @@ app.put("/api/retros/:retroId", async (c) => {
   const retroId = c.req.param("retroId");
   const id = c.env.RETRO_REGISTRY.idFromName("global");
   const registry = c.env.RETRO_REGISTRY.get(id);
-  const retro = await registry.updateRetroTitle(retroId, body.title.trim());
+  const existing = await registry.getRetro(retroId);
+  if (!existing) {
+    return c.json({ error: "Retro not found" }, 404);
+  }
+  const retro = await registry.updateRetroTitle(existing.id, body.title.trim());
   if (!retro) {
     return c.json({ error: "Retro not found" }, 404);
   }
@@ -97,8 +101,12 @@ app.delete("/api/retros/:retroId", async (c) => {
   const retroId = c.req.param("retroId");
   const id = c.env.RETRO_REGISTRY.idFromName("global");
   const registry = c.env.RETRO_REGISTRY.get(id);
-  await registry.deleteRetro(retroId);
-  const roomId = c.env.RETRO_ROOM.idFromName(retroId);
+  const existing = await registry.getRetro(retroId);
+  if (!existing) {
+    return c.json({ ok: true });
+  }
+  await registry.deleteRetro(existing.id);
+  const roomId = c.env.RETRO_ROOM.idFromName(existing.id);
   const room = c.env.RETRO_ROOM.get(roomId);
   await room.deleteAll();
   return c.json({ ok: true });
@@ -143,7 +151,7 @@ app.get("/api/ws/:retroId", async (c) => {
     return c.json({ error: "Retro not found" }, 404);
   }
 
-  const id = c.env.RETRO_ROOM.idFromName(retroId);
+  const id = c.env.RETRO_ROOM.idFromName(retro.id);
   const room = c.env.RETRO_ROOM.get(id);
   return room.fetch(c.req.raw);
 });

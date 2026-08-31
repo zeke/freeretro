@@ -383,6 +383,10 @@ export class RetroRoom extends DurableObject<Env> {
         this.handleCommentCreate(session, msg.cardId, msg.content, msg.id);
         break;
 
+      case "comment:update":
+        this.handleCommentUpdate(msg.commentId, msg.content);
+        break;
+
       case "column:create":
         this.handleColumnCreate(msg.label, msg.id);
         break;
@@ -569,6 +573,22 @@ export class RetroRoom extends DurableObject<Env> {
     );
 
     this.broadcast({ type: "comment:created", comment });
+  }
+
+  private handleCommentUpdate(commentId: string, content: string): void {
+    const trimmed = content.trim().slice(0, 500);
+    if (!trimmed) return;
+
+    this.ctx.storage.sql.exec(
+      "UPDATE card_comments SET content = ? WHERE id = ?",
+      trimmed,
+      commentId,
+    );
+
+    const comment = this.getComment(commentId);
+    if (comment) {
+      this.broadcast({ type: "comment:updated", comment });
+    }
   }
 
   private handleColumnCreate(label: string, requestedId?: string): void {
@@ -784,6 +804,29 @@ export class RetroRoom extends DurableObject<Env> {
       cardId: row.card_id,
       userId: row.user_id,
     }));
+  }
+
+  private getComment(id: string): CardComment | null {
+    const row = [
+      ...this.ctx.storage.sql.exec<{
+        id: string;
+        card_id: string;
+        content: string;
+        author: string;
+        author_id: string | null;
+        created_at: number;
+      }>("SELECT * FROM card_comments WHERE id = ?", id),
+    ][0];
+
+    if (!row) return null;
+    return {
+      id: row.id,
+      cardId: row.card_id,
+      content: row.content,
+      author: row.author,
+      authorId: row.author_id,
+      createdAt: row.created_at,
+    };
   }
 
   private getAllComments(): CardComment[] {
