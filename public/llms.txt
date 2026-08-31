@@ -27,13 +27,17 @@ Content-Type: application/json
 { "title": "Sprint 42 Retro", "createdBy": "agent" }
 
 Response 201:
-{ "id": "<uuid>", "title": "Sprint 42 Retro", "createdAt": 1234567890000, "createdBy": "agent" }
+{ "id": "<uuid>", "slug": "sprint-42-retro-2026-08-17", "title": "Sprint 42 Retro", "createdAt": 1234567890000, "createdBy": "agent" }
+
+`slug` is a readable alias generated from the title and creation date. It
+never changes, even if the retro is renamed.
 
 ### Get a retro
 
-GET /api/retros/:retroId
+GET /api/retros/:idOrSlug
 
-Response 200: RetroSummary object, or 404 if not found.
+Accepts either the UUID or the slug. Response 200: RetroSummary object, or
+404 if not found.
 
 ### Rename a retro
 

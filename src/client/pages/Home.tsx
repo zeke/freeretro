@@ -24,7 +24,7 @@ export function Home() {
     saveLocalRetro(retro);
     setTitle("");
     setCreating(false);
-    navigate(`/retro/${retro.id}`);
+    navigate(`/retro/${retro.slug}`);
   };
 
   return (

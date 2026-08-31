@@ -148,7 +148,7 @@ export function Board() {
     saveLocalRetro(newRetro);
     setShowCopyModal(false);
     setCopying(false);
-    navigate(`/retro/${newRetro.id}`);
+    navigate(`/retro/${newRetro.slug}`);
   };
 
   const deleteRetro = async () => {

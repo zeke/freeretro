@@ -22,6 +22,45 @@ describe("API endpoints", () => {
     );
   });
 
+  it("POST /api/retros returns a readable slug alongside the UUID", async () => {
+    const res = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Sprint 42 Retro" }),
+    });
+    const retro = (await res.json()) as { slug: string; createdAt: number };
+    const date = new Date(retro.createdAt).toISOString().slice(0, 10);
+    expect(retro.slug).toBe(`sprint-42-retro-${date}`);
+  });
+
+  it("dedupes slugs for retros with the same title created on the same day", async () => {
+    const create = () =>
+      SELF.fetch("http://localhost/api/retros", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Duplicate Title" }),
+      }).then((res) => res.json() as Promise<{ slug: string }>);
+
+    const first = await create();
+    const second = await create();
+    expect(first.slug).not.toBe(second.slug);
+    expect(second.slug).toBe(`${first.slug}-2`);
+  });
+
+  it("GET /api/retros/:idOrSlug resolves by slug", async () => {
+    const createRes = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Find By Slug" }),
+    });
+    const created = (await createRes.json()) as { id: string; slug: string };
+
+    const res = await SELF.fetch(`http://localhost/api/retros/${created.slug}`);
+    expect(res.status).toBe(200);
+    const retro = (await res.json()) as { id: string };
+    expect(retro.id).toBe(created.id);
+  });
+
   it("GET /api/retros/:id returns a single retro", async () => {
     const createRes = await SELF.fetch("http://localhost/api/retros", {
       method: "POST",

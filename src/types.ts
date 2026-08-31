@@ -63,6 +63,7 @@ export interface CursorAnchor {
 
 export interface RetroSummary {
   id: string;
+  slug: string;
   title: string;
   createdAt: number;
   createdBy: string | null;
