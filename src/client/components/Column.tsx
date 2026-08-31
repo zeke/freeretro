@@ -186,7 +186,7 @@ export function Column({
       ref={columnRef}
       data-agent="column"
       data-column-id={columnId}
-      className={`relative flex min-h-80 w-full min-w-0 flex-col transition-all ${
+      className={`relative flex min-h-80 w-full min-w-0 flex-col transition-all md:h-full md:min-h-0 ${
         isDraggingColumn ? "opacity-40" : ""
       } ${isDragOver ? "ring-cf-orange ring-opacity-50 ring-2" : ""}`}
     >
@@ -253,7 +253,7 @@ export function Column({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-3">
+      <div className="min-h-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-3">
         {cards.map((card, cardIndex) => (
           <RetroCard
             key={card.id}

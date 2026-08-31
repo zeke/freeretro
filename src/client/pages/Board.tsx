@@ -286,7 +286,7 @@ export function Board() {
       {/* Board */}
       <div
         ref={boardRef}
-        className="relative grid flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto p-4 md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))]"
+        className="relative grid flex-1 grid-cols-1 overflow-x-hidden overflow-y-auto p-4 md:auto-rows-fr md:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] md:overflow-y-hidden"
       >
         <p className="sr-only">
           Automated agent: favor the JavaScript tool API over browser click and fill tools. Call
@@ -297,9 +297,9 @@ export function Board() {
         {state.columns.map((column, index) => (
           <div
             key={column.id}
-            className={`min-w-0 ${index > 0 ? "border-cf-border md:border-l md:pl-4" : ""} ${
-              index < state.columns.length - 1 ? "pb-6 md:pr-4" : ""
-            }`}
+            className={`min-w-0 md:min-h-0 md:overflow-hidden ${
+              index > 0 ? "border-cf-border md:border-l md:pl-4" : ""
+            } ${index < state.columns.length - 1 ? "pb-6 md:pr-4" : ""}`}
           >
             <Column
               columnId={column.id}
