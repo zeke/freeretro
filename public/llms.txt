@@ -69,9 +69,9 @@ Response: { "ok": true }
 
 ### Export a retro as JSON
 
-GET /retro/:retroId.json
+GET /retro/:idOrSlug.json
 
-Returns a structured snapshot of the board without a browser. Response 200:
+Accepts either the UUID or the slug. Returns a structured snapshot of the board without a browser. Response 200:
 
 {
   "id": "<uuid>",

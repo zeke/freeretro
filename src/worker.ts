@@ -112,17 +112,17 @@ app.delete("/api/retros/:retroId", async (c) => {
   return c.json({ ok: true });
 });
 
-// Structured JSON export of a retro board: /retro/:retroId.json
-app.get("/retro/:file{[0-9a-fA-F-]+\\.json}", async (c) => {
-  const retroId = c.req.param("file").slice(0, -".json".length);
+// Structured JSON export of a retro board: /retro/:idOrSlug.json
+app.get("/retro/:file{[a-z0-9-]+\\.json}", async (c) => {
+  const idOrSlug = c.req.param("file").slice(0, -".json".length);
   const registryId = c.env.RETRO_REGISTRY.idFromName("global");
   const registry = c.env.RETRO_REGISTRY.get(registryId);
-  const retro = await registry.getRetro(retroId);
+  const retro = await registry.getRetro(idOrSlug);
   if (!retro) {
     return c.json({ error: "Retro not found" }, 404);
   }
 
-  const roomId = c.env.RETRO_ROOM.idFromName(retroId);
+  const roomId = c.env.RETRO_ROOM.idFromName(retro.id);
   const room = c.env.RETRO_ROOM.get(roomId);
   const columns = await room.getSnapshot();
 
