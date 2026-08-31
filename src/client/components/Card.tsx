@@ -43,6 +43,8 @@ export function RetroCard({
   const [editContent, setEditContent] = useState(card.content);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentContent, setEditCommentContent] = useState("");
   const isOwnCard = card.authorId === userId || (!card.authorId && card.author === userName);
   const shouldBlur = blurred && !isOwnCard;
   const userUpvoted = upvotes.some((upvote) => upvote.userId === userId);
@@ -151,6 +153,19 @@ export function RetroCard({
     setCommentsOpen(true);
   };
 
+  const startEditingComment = (comment: CardComment) => {
+    setEditingCommentId(comment.id);
+    setEditCommentContent(comment.content);
+  };
+
+  const saveCommentEdit = (comment: CardComment) => {
+    const trimmed = editCommentContent.trim();
+    if (trimmed && trimmed !== comment.content) {
+      send({ type: "comment:update", commentId: comment.id, content: trimmed });
+    }
+    setEditingCommentId(null);
+  };
+
   const controlBase =
     "text-cf-text-muted hover:text-cf-orange group/tooltip relative inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-full px-2 text-sm transition-all hover:-translate-y-px hover:bg-orange-50 focus-visible:text-cf-orange focus-visible:outline-none";
   // `!` forces this to win over the always-present `text-cf-text-muted` base
@@ -233,7 +248,31 @@ export function RetroCard({
                           })}
                         </span>
                       </div>
-                      <MarkdownContent content={comment.content} />
+                      {editingCommentId === comment.id ? (
+                        <textarea
+                          value={editCommentContent}
+                          onChange={(e) => setEditCommentContent(e.target.value)}
+                          onBlur={() => saveCommentEdit(comment)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              saveCommentEdit(comment);
+                            }
+                            if (e.key === "Escape") {
+                              setEditCommentContent(comment.content);
+                              setEditingCommentId(null);
+                            }
+                          }}
+                          autoFocus
+                          maxLength={500}
+                          className="border-cf-border bg-cf-bg-page text-cf-text focus:border-cf-orange w-full resize-none rounded border p-1 text-xs outline-none"
+                          rows={2}
+                        />
+                      ) : (
+                        <div className="cursor-text" onClick={() => startEditingComment(comment)}>
+                          <MarkdownContent content={comment.content} />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

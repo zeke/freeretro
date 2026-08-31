@@ -41,6 +41,7 @@ type RetroAction =
   | { type: "card:grouped"; cardId: string; groupId: string }
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
   | { type: "comment:created"; comment: CardComment }
+  | { type: "comment:updated"; comment: CardComment }
   | { type: "column:created"; column: RetroColumn }
   | { type: "column:updated"; column: RetroColumn }
   | { type: "column:moved"; column: RetroColumn }
@@ -169,6 +170,14 @@ function reducer(state: RetroState, action: RetroAction): RetroState {
     case "comment:created":
       return { ...state, comments: [...state.comments, action.comment] };
 
+    case "comment:updated":
+      return {
+        ...state,
+        comments: state.comments.map((comment) =>
+          comment.id === action.comment.id ? action.comment : comment,
+        ),
+      };
+
     default:
       return state;
   }
@@ -255,6 +264,10 @@ export function useRetroState(subscribe: (handler: (msg: ServerMessage) => void)
           break;
         case "comment:created":
           dispatch({ type: "comment:created", comment: msg.comment });
+          break;
+
+        case "comment:updated":
+          dispatch({ type: "comment:updated", comment: msg.comment });
           break;
       }
     });

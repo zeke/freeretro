@@ -143,6 +143,7 @@ Once a retro board is open in a browser, the following are available:
 - move_card(cardId, columnId, position?) - move a card to another column
 - upvote_card(cardId) - toggle your upvote
 - comment_card(cardId, content) - add a text comment to a card
+- edit_comment(commentId, content) - replace the text of an existing comment
 - rename_column(columnId, label) - rename a column
 - create_column(label) - add a new column to the board
 - move_column(columnId, position?) - reorder a column; position defaults to the end of the board

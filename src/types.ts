@@ -117,6 +117,7 @@ export type ClientMessage =
   | { type: "card:group"; cardId: string; targetCardId: string }
   | { type: "card:ungroup"; cardId: string }
   | { type: "comment:create"; cardId: string; content: string; id?: string }
+  | { type: "comment:update"; commentId: string; content: string }
   | { type: "column:create"; label: string; id?: string }
   | { type: "column:update"; columnId: ColumnId; label: string }
   | { type: "column:move"; columnId: ColumnId; position: number }
@@ -166,6 +167,7 @@ export type ServerMessage =
   | { type: "card:grouped"; cardId: string; groupId: string }
   | { type: "card:ungrouped"; cardId: string; columnId: ColumnId; position: number }
   | { type: "comment:created"; comment: CardComment }
+  | { type: "comment:updated"; comment: CardComment }
   | { type: "column:created"; column: RetroColumn }
   | { type: "column:updated"; column: RetroColumn }
   | { type: "column:moved"; column: RetroColumn }

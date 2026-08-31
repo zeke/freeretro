@@ -243,6 +243,25 @@ export function createTools(ctx: ToolContext): AgentTool[] {
       },
     },
     {
+      name: "edit_comment",
+      description: "Replace the text of an existing comment.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          commentId: { type: "string" },
+          content: { type: "string", description: "The new comment text." },
+        },
+        required: ["commentId", "content"],
+      },
+      execute: async ({ commentId, content }) => {
+        if (typeof commentId !== "string") return err("commentId is required.");
+        if (typeof content !== "string" || !content.trim()) return err("content is required.");
+        const trimmed = content.trim();
+        send({ type: "comment:update", commentId, content: trimmed });
+        return json({ comment: { id: commentId, content: trimmed } });
+      },
+    },
+    {
       name: "rename_column",
       description: "Rename a column.",
       inputSchema: {
