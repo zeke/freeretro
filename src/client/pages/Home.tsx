@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import type { RetroSummary } from "../../types";
 import { Footer } from "../components/Footer";
-import { saveLocalRetro } from "../localRetros";
+import { getLocalRetros, removeLocalRetro, saveLocalRetro } from "../localRetros";
 
 export function Home() {
   const [title, setTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [recentRetros, setRecentRetros] = useState(() => getLocalRetros());
   const navigate = useNavigate();
 
   const createRetro = async (e: React.FormEvent) => {
@@ -63,6 +64,34 @@ export function Home() {
             {creating ? "Creating..." : "Create retro"}
           </button>
         </form>
+
+        {recentRetros.length > 0 && (
+          <div className="mx-auto mt-12 w-full max-w-xl">
+            <h2 className="text-cf-text-muted mb-3 text-sm font-medium tracking-wide uppercase">
+              Recent retros
+            </h2>
+            <ul className="border-cf-border divide-cf-border divide-y rounded-lg border">
+              {recentRetros.map((retro) => (
+                <li key={retro.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <Link
+                    to={`/retro/${retro.slug}`}
+                    className="text-cf-text hover:text-cf-orange min-w-0 flex-1 truncate"
+                  >
+                    {retro.title}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setRecentRetros(removeLocalRetro(retro.id))}
+                    aria-label={`Remove ${retro.title} from recent retros`}
+                    className="text-cf-text-muted hover:text-red-500"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </main>
       <Footer />
     </div>
