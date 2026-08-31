@@ -47,6 +47,18 @@ describe("API endpoints", () => {
     expect(second.slug).toBe(`${first.slug}-2`);
   });
 
+  it("doesn't duplicate a date the title already ends with", async () => {
+    const res = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "DevRel Retro 2026-08-31" }),
+    });
+    const retro = (await res.json()) as { slug: string; createdAt: number };
+    const date = new Date(retro.createdAt).toISOString().slice(0, 10);
+    expect(retro.slug.endsWith(`${date}-${date}`)).toBe(false);
+    expect(retro.slug.startsWith("devrel-retro-2026-08-31")).toBe(true);
+  });
+
   it("GET /api/retros/:idOrSlug resolves by slug", async () => {
     const createRes = await SELF.fetch("http://localhost/api/retros", {
       method: "POST",
