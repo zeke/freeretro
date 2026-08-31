@@ -7,6 +7,7 @@ import { useAgentTools } from "../hooks/useAgentTools";
 import { useDemoSwarm } from "../hooks/useDemoSwarm";
 import { Column } from "../components/Column";
 import { CopyRetroModal } from "../components/CopyRetroModal";
+import { RenameModal } from "../components/RenameModal";
 import { CursorOverlay } from "../components/CursorOverlay";
 import { HeaderMenu } from "../components/HeaderMenu";
 import { NamePrompt } from "../components/NamePrompt";
@@ -30,6 +31,7 @@ export function Board() {
   const [notFound, setNotFound] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
   const [showPointers, setShowPointers] = useState(
     () => localStorage.getItem("retro-show-pointers") !== "false",
   );
@@ -91,6 +93,12 @@ export function Board() {
   const handleNameSubmit = (newName: string) => {
     setName(newName);
     setShowNamePrompt(false);
+  };
+
+  const renameUser = (newName: string) => {
+    send({ type: "join", name: newName });
+    setName(newName);
+    setShowRenameModal(false);
   };
 
   const copyLink = () => {
@@ -279,6 +287,7 @@ export function Board() {
             onAddColumn={addColumn}
             onCopy={() => setShowCopyModal(true)}
             onDelete={deleteRetro}
+            onChangeName={() => setShowRenameModal(true)}
           />
         </div>
       </header>
@@ -329,6 +338,13 @@ export function Board() {
           />
         )}
       </div>
+      {showRenameModal && (
+        <RenameModal
+          currentName={name}
+          onCancel={() => setShowRenameModal(false)}
+          onConfirm={renameUser}
+        />
+      )}
       {showCopyModal && retro && (
         <CopyRetroModal
           defaultTitle={`${retro.title} (copy)`}

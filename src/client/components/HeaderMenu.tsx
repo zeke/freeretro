@@ -14,6 +14,7 @@ interface HeaderMenuProps {
   onAddColumn: () => void;
   onCopy: () => void;
   onDelete: () => void;
+  onChangeName: () => void;
 }
 
 export function HeaderMenu({
@@ -29,6 +30,7 @@ export function HeaderMenu({
   onAddColumn,
   onCopy,
   onDelete,
+  onChangeName,
 }: HeaderMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,19 @@ export function HeaderMenu({
             Add column
           </button>
           <div className="border-cf-border my-1 border-t" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onChangeName();
+              setOpen(false);
+            }}
+            data-agent-control="change-name"
+            data-agent-prefer-api="set_name"
+            className={menuItemClass}
+          >
+            Change name
+          </button>
           <button
             type="button"
             role="menuitem"
