@@ -292,6 +292,20 @@ describe("API endpoints", () => {
     expect(res.status).toBe(426);
   });
 
+  it("GET /retro/:slug.json resolves by slug", async () => {
+    const createRes = await SELF.fetch("http://localhost/api/retros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Slug Snapshot Retro" }),
+    });
+    const created = (await createRes.json()) as { id: string; slug: string };
+
+    const res = await SELF.fetch(`http://localhost/retro/${created.slug}.json`);
+    expect(res.status).toBe(200);
+    const snapshot = (await res.json()) as { id: string };
+    expect(snapshot.id).toBe(created.id);
+  });
+
   it("GET /retro/:id.json returns a structured snapshot", async () => {
     const createRes = await SELF.fetch("http://localhost/api/retros", {
       method: "POST",
