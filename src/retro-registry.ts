@@ -15,7 +15,9 @@ function slugify(title: string, createdAt: number): string {
       .slice(0, 40)
       .replace(/-+$/g, "") || "retro";
   const date = new Date(createdAt).toISOString().slice(0, 10);
-  return `${base}-${date}`;
+  // Titles sometimes already end with a date (e.g. imported retros named
+  // "DevRel Retro 2026-08-31"); don't tack on a duplicate.
+  return base.endsWith(date) ? base : `${base}-${date}`;
 }
 
 export class RetroRegistry extends DurableObject<Env> {
